@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <string>
-
+#include <glfw3.h>
 //-宣言--
 extern char g_playerName[32] ; // 入力用バッファ
 extern bool g_isNamingPhase ;   // 名前入力中かどうか

@@ -13,6 +13,7 @@
 #include <fstream>
 #include <vector>
 
+extern GLFWwindow* window;
 
 int g_Scene = 0;
 bool g_StoryNeedsLoad = false;
@@ -30,21 +31,17 @@ struct Message {
 static std::vector<Message> g_messages;
 
 void StoryEvent() {
+    bool isDialogueFinished = false;
     if (g_StoryNeedsLoad) {
         LoadStoryData();
         g_currentIndex = 0;       //セリフの最初を一行目にコピー  
         g_StoryNeedsLoad = false; // ロード完了！
     }
 
-    // セリフがなかったら
-    if (g_messages.empty()) {
-        ImGui::Begin("Debug");
-        ImGui::Text("Error: No messages loaded. Check data.json.");
-        if (ImGui::Button("Back")) currentScene = Scene::Title;
-        ImGui::End();
-        return;
+    if (isDialogueFinished && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+        currentScene = Scene::Field; // ここで切り替え！
+        std::cout << "StoryEvent finished. Moving to Field." << std::endl;
     }
-
     // 3. メッセージウィンドウを表示（UpdateStoryを呼ぶ）
     UpdateStory();
 }
@@ -136,6 +133,7 @@ void UpdateStory()
         }
         else {
             currentScene = Scene::Title;
+            return;
         }
     }
 

@@ -1,5 +1,7 @@
 #pragma once
+#include <glm/glm.hpp>
 #include <string>
+
 class CombatSystem;
 // ƒV[ƒ“‚Ìí—Ş‚ğ’è‹`‚·‚é—ñ‹“Œ^
 enum class Scene {

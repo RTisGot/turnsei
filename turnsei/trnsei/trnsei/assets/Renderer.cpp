@@ -1,6 +1,7 @@
-#include "Renderer.h"
+#define GLEW_STATIC
 #include<glew.h>
-#include<glm/glm.hpp>
+#include "Renderer.h"
+
 
 
 std::map<char, Text> Texts;

@@ -1,8 +1,10 @@
 #pragma once
-#include <glm/glm.hpp>
+#define GLEW_STATIC
 #include <glew.h>
-#include <vector>
 #include <glfw3.h>
+#include <glm/glm.hpp>
+#include <vector>
+
 
 //Player‚ÌƒNƒ‰ƒX
 class Player {

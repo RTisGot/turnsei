@@ -1,7 +1,7 @@
-#include "Player.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glfw3.h>
+
+#include "Player.h"
 
 
 void Player::Init() {

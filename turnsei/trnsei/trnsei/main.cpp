@@ -1,8 +1,9 @@
 ﻿#define GLEW_STATIC
-#include <iostream>
-#include <fstream>
 #include <glew.h>
 #include <glfw3.h>
+#include <iostream>
+#include <fstream>
+
 
 #include "src/game/Scene.h"
 #include "src/game/Character.h"
@@ -17,6 +18,9 @@ const unsigned int SCR_Width = 1280, SCR_Height = 720;
 
 //プロトタイプ宣言
 bool LoadWetland(const std::string& filePath);
+
+//実数
+GLFWwindow* window = nullptr;
 
 //フォントのロード（日本語対応）
 static void LoadJapaneseFont(ImGuiIO& io)

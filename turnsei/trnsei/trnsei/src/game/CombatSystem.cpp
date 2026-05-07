@@ -1,13 +1,14 @@
-﻿#include "Character.h"
+﻿#define GLEW_STATIC
+#include <glfw3.h>
+#include "imgui.h"
+
+#include "Character.h"
 #include "CombatSystem.h"
 
 #include <iostream>
 #include <algorithm>
 #include <string>
 
-#include <glfw3.h>
-
-#include "imgui.h"
 
 // 参加者の表示関数		
 void CombatSystem::displayTurnOrder()

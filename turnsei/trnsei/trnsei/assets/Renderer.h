@@ -1,12 +1,13 @@
 #pragma once
 
+#include<glm/glm.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-#include "../src/game/Character.h"
-#include<glm/glm.hpp>
-#include "Shader.h"
 #include<map>
+
+#include "../src/game/Character.h"
+#include "Shader.h"
 
 // フォント描画用の文字情報（FreeType用）
 struct Glyph {
