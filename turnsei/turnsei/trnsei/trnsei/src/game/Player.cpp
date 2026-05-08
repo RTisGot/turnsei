@@ -42,7 +42,7 @@ void Player::Init() {
     this->indexCount = 36; // 立方体の全インデックス数
 }
 
-void Player::Draw(GLuint shaderProgram) {
+void Player::Draw(GLuint shaderProgram,glm::mat4 view,glm::mat4 projection) {
     glUseProgram(shaderProgram);
 
     // プレイヤーの位置と回転を反映した行列を作る
@@ -59,6 +59,11 @@ void Player::Draw(GLuint shaderProgram) {
 }
 
 void Player::Update(float deltaTime, GLFWwindow* window) {
+    if (window == nullptr) {
+        printf("Error: window is nullptr!\n");
+        return;
+    }
+
     float moveSpeed = 5.0f; // 移動速度
     glm::vec3 moveDir(0.0f);
 

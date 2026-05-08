@@ -1,14 +1,17 @@
 ﻿{
   "events": [
     {
-      "name": "???",
-      "text": "*****,"
-    },
-    {
-      
-  "name": "SYSTEM_NAMING",
-  "text": "君の名前を教えてくれ。"
-
+      "id": "Intro",
+      "messages": [
+        {
+          "name": "???",
+          "text": "*****,"
+        },
+        {
+          "name": "SYSTEM_NAMING",
+          "text": "君の名前を教えてくれ。"
+        }
+      ]
     }
   ]
 }

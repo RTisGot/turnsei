@@ -2,6 +2,7 @@
 #include <string>
 #include<glm/glm.hpp>
 class CombatSystem;
+struct GLFWwindow;
 // シーンの種類を定義する列挙型
 enum class Scene {
 	StoryEvent, //ストーリー
@@ -17,7 +18,7 @@ enum class Scene {
 void SceneUpdate(Scene nextScene);
 
 //Title画面から次の画面へ遷移させるための関数
-void MainUpdate(CombatSystem& combatSystem);
+void MainUpdate(CombatSystem& combatSystem, GLFWwindow* window);
 
 //シーンの列挙型によるステート管理
 extern Scene currentScene;

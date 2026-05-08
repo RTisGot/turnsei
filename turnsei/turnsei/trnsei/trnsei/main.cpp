@@ -18,6 +18,7 @@ const unsigned int SCR_Width = 1280, SCR_Height = 720;
 //プロトタイプ宣言
 bool LoadWetland(const std::string& filePath);
 
+GLFWwindow* window;
 //フォントのロード（日本語対応）
 static void LoadJapaneseFont(ImGuiIO& io)
 {
@@ -104,15 +105,15 @@ int main()
 		glfwPollEvents();        // イベントの処理
 		processInput(window, combatSystem);   //入力処理
 
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // 背景色の設定
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        // バッファのクリア
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // 背景色の設定
-		glClear(GL_COLOR_BUFFER_BIT);         // バッファのクリア
-
-		MainUpdate(combatSystem);                         //シーンのアップデート
-
+		MainUpdate(combatSystem, window);                         //シーンのアップデート
+		
 		//combatSystem.renderUI(SCR_Width, SCR_Height);
 
 		ImGui::Render();

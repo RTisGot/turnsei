@@ -1,4 +1,5 @@
 #pragma once
+#define GLFW_INCLUDE_NONE
 #include <glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -14,7 +15,7 @@ public:
     // 初期化（ここで立方体のVBOなどを作る）
     void Init();
     // 描画
-    void Draw(GLuint shaderProgram);
+    void Draw(GLuint shaderProgram, glm::mat4, glm::mat4);
 
     // 毎フレームの更新（移動処理）
     void Update(float deltaTime, GLFWwindow* window);

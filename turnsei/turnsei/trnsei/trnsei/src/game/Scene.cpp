@@ -25,7 +25,7 @@ void SceneUpdate(Scene nextScene)
 	currentScene = nextScene;//ŽŸ‚Ì‰æ–Ê‚Ö‘JˆÚ
 }
 
-void MainUpdate(CombatSystem& combatSystem) {
+void MainUpdate(CombatSystem& combatSystem, GLFWwindow* window) {
 	std::cout << "MainUpdate currentScene: " << (int)currentScene << std::endl;
 	switch (currentScene) {
 	case Scene::Title:

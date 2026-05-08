@@ -19,6 +19,7 @@ bool g_StoryNeedsLoad = false;
 static size_t g_currentIndex = 0;
 using json = nlohmann::json;
 char g_playerName[32] = "プレイヤー"; // 入力用バッファ
+std::string g_CurrentEventID = "Intro";
 extern bool g_isNamingPhase = false;   // 名前入力中かどうか
 
 
@@ -31,26 +32,20 @@ static std::vector<Message> g_messages;
 
 void StoryEvent() {
     if (g_StoryNeedsLoad) {
-        LoadStoryData();
+        LoadStoryData("Intro");
         g_currentIndex = 0;       //セリフの最初を一行目にコピー  
         g_StoryNeedsLoad = false; // ロード完了！
     }
 
-    // セリフがなかったら
-    if (g_messages.empty()) {
-        ImGui::Begin("Debug");
-        ImGui::Text("Error: No messages loaded. Check data.json.");
-        if (ImGui::Button("Back")) currentScene = Scene::Title;
-        ImGui::End();
-        return;
-    }
-
+    
     // 3. メッセージウィンドウを表示（UpdateStoryを呼ぶ）
     UpdateStory();
 }
+
 //セリフデータをメモリにコピー
-void LoadStoryData()
-{//ファイル読み込み用
+void LoadStoryData(std::string storyID)
+{
+    //ファイル読み込み用
     std::ifstream file("data.json");
     if (!file) {
         std::cout << "[ERROR] Could not open data.json!" << std::endl;
@@ -62,17 +57,27 @@ void LoadStoryData()
 
     g_messages.clear();
     // JSONの配列をループで回して構造体に詰め込む
-    for (const auto& item : data["events"]) {
-        Message msg;
-        msg.name = item["name"].get<std::string>(); // 型を明示して取得
-        msg.text = item["text"].get<std::string>();
-        g_messages.push_back(msg);
+    for (const auto& event : data["events"]) {
+        if (event["id"] == storyID) {
+            for(const auto& item : event["messages"]){
+                Message msg;
+                msg.name = item["name"].get<std::string>(); // 型を明示して取得
+                msg.text = item["text"].get<std::string>();
+                g_messages.push_back(msg);
+            }
+            break;
+        }
+       
     }
 }
 
 void UpdateStory()
 {
-    if (g_messages.empty()) return;
+    //messageが空,または
+    if (g_messages.empty() || g_currentIndex >= g_messages.size()) {
+        currentScene = Scene::Field;
+        return;
+    }
     const auto& msg = g_messages[g_currentIndex];
 
     // --- 名前入力の判定 ---
@@ -97,7 +102,7 @@ void UpdateStory()
         return; // ここで抜ける場合はスタイル変更前なので安全！
     }
 
-    // --- 2. スタイル設定（通常のセリフ用） ---
+    // --- スタイル設定 ---
     ImVec2 screenSize = ImGui::GetIO().DisplaySize;
     float windowWidth = screenSize.x * 0.8f;
     float windowHeight = 150.0f;
@@ -129,13 +134,22 @@ void UpdateStory()
     ImGui::TextColored(ImVec4(1, 1, 1, alpha), "▼");
 
     // クリック判定
-    // IsWindowHoveredだけでなく、背景クリックでも進むようにしたい場合は調整
-    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
+    if (ImGui::IsMouseClicked(0)) {
         if (g_currentIndex + 1 < g_messages.size()) {
             g_currentIndex++;
         }
         else {
-            currentScene = Scene::Title;
+            // イベント終了後の処理
+            if (g_CurrentEventID == "Intro") {
+                currentScene = Scene::Field; // 序盤が終わったらフィールドへ
+                return;
+            }
+            else if (g_CurrentEventID == "Ending") {
+                currentScene = Scene::Title; // エンディングならタイトルへ
+            }
+            else {
+                currentScene = Scene::Field; // 基本はフィールドに戻る
+            }
         }
     }
 

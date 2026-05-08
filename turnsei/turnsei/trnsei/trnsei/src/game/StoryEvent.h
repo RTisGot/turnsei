@@ -7,7 +7,7 @@ extern bool g_isNamingPhase ;   // 名前入力中かどうか
 
 void StoryEvent();
 //Jsonfileを読み込ませる関数
-void LoadStoryData();
+void LoadStoryData(std::string);
 
 //ストーリーを更新する処理を行う関数
 void UpdateStory();

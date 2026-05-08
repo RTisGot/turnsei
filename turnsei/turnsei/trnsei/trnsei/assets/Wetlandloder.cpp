@@ -80,12 +80,16 @@ bool LoadWetland(const std::string& filePath) {
     return true;
 }
 
-void DrawWetland(Shader& shader) {
-    glUseProgram(shader.ID);
-    // モデル行列（位置・回転・スケール）を設定
-    glm::mat4 model = glm::mat4(1.0f);
-    shader.setMat4("model", model);
+void DrawWetland(Shader& shader, glm::mat4 view, glm::mat4 projection) {
+    shader.use(); // glUseProgram
 
+    // 1. 各種行列をシェーダーに転送
+    glm::mat4 model = glm::mat4(1.0f); // 湿地帯は原点に配置
+    shader.setMat4("model", model);
+    shader.setMat4("view", view);
+    shader.setMat4("projection", projection);
+
+    // 2. 描画
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

@@ -1,4 +1,4 @@
-#define GLEW_STATIC
+#define GLFW_INCLUDE_NONE
 #include <glew.h>
 #include <GLFW/glfw3.h>
 #include <fstream>
