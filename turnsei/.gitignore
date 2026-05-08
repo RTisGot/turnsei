@@ -1,0 +1,14 @@
+.vs/
+out/
+build/
+*.aps
+*.opendb
+*.pdb
+
+# --- コンパイル済みファイル ---
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.log
