@@ -99,7 +99,7 @@ void UpdateStory()
             }
         }
         ImGui::End();
-        return; // ここで抜ける場合はスタイル変更前なので安全！
+        return; 
     }
 
     // --- スタイル設定 ---
@@ -147,6 +147,7 @@ void UpdateStory()
             else if (g_CurrentEventID == "Ending") {
                 currentScene = Scene::Title; // エンディングならタイトルへ
             }
+
             else {
                 currentScene = Scene::Field; // 基本はフィールドに戻る
             }

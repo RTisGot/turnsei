@@ -1,0 +1,12 @@
+# Blender 5.1.1 MTL File: '21644_autosave.blend11'
+# www.blender.org
+
+newmtl マテリアル.001
+Ns 922.209595
+Ka 0.420635 0.420635 0.420635
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd DaySkyHDRI053B_2K_HDR.exr

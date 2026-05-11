@@ -3,10 +3,10 @@
 #include <iostream>
 #include <fstream>
 
-
 #include "src/game/Scene.h"
 #include "src/game/Character.h"
 #include "src/game/CombatSystem.h"
+#include "src/game/Field.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -69,7 +69,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* window = glfwCreateWindow(SCR_Width, SCR_Height, u8"turnsei - 行動順", NULL, NULL);
+	window = glfwCreateWindow(SCR_Width, SCR_Height, u8"turnsei - 行動順", NULL, NULL);
 	if (!window) {
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();                      //すべてのリソースを解放してプログラムを終了
@@ -97,6 +97,7 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
+	
 	CombatSystem combatSystem;
 	setupStageOne(combatSystem);
 
@@ -108,19 +109,18 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // 背景色の設定
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        // バッファのクリア
 
+		FieldInit();
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
 		MainUpdate(combatSystem, window);                         //シーンのアップデート
-		
-		//combatSystem.renderUI(SCR_Width, SCR_Height);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window); // バッファの入れ替え
-		//glfwPollEvents();        // イベントの処理
 	}
 
 	ImGui_ImplOpenGL3_Shutdown();

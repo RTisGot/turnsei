@@ -20,19 +20,22 @@ struct Vertex {
 
 // 描画に必要なID
 unsigned int VAO, VBO, EBO;
-unsigned int indexCount;
+unsigned int indexCount= 0;
 
 // main ではなく、呼び出し可能な関数名（LoadWetlandなど）に変える
 bool LoadWetland(const std::string& filePath) {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_GenNormals);
+    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate |      // ポリゴンを三角形に強制
+        aiProcess_FlipUVs |          // UVをOpenGL用に反転
+        aiProcess_CalcTangentSpace   // 法線マップ用計算
+    );
 
     if (!scene || !scene->mRootNode) {
         std::cerr << "Assimp Error: " << importer.GetErrorString() << std::endl;
         return false;
     }
 
-    // 最初のメッシュ（湿地帯）を取得
+    //湿地帯を取得
     aiMesh* mesh = scene->mMeshes[0];
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
@@ -54,7 +57,14 @@ bool LoadWetland(const std::string& filePath) {
         for (unsigned int j = 0; j < face.mNumIndices; j++)
             indices.push_back(face.mIndices[j]);
     }
-    indexCount = indices.size();
+    indexCount = static_cast<unsigned int>(indices.size());
+    std::cout << "[CHECK] indices vector size: " << indices.size() << std::endl;
+
+    // グローバル変数の indexCount に代入
+    indexCount = static_cast<unsigned int>(indices.size());
+
+    std::cout << "[CHECK] global indexCount is now: " << indexCount << std::endl;
+    return true;
 
     // 3. OpenGLのバッファ（VAO/VBO/EBO）を作成
     glGenVertexArrays(1, &VAO);
@@ -85,9 +95,10 @@ void DrawWetland(Shader& shader, glm::mat4 view, glm::mat4 projection) {
 
     // 1. 各種行列をシェーダーに転送
     glm::mat4 model = glm::mat4(1.0f); // 湿地帯は原点に配置
+    shader.setMat4("projection", projection);
     shader.setMat4("model", model);
     shader.setMat4("view", view);
-    shader.setMat4("projection", projection);
+   
 
     // 2. 描画
     glBindVertexArray(VAO);
