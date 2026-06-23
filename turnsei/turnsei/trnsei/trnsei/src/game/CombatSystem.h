@@ -1,27 +1,65 @@
 #pragma once
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <string>
 #include <vector>
-//#include "Character.h"
 
-struct Character;//キャラクター構造体の前方宣言
+struct Character;
+
+enum class BattleState {
+    InProgress,
+    Victory,
+    Defeat
+};
+
+enum class BattleCommand {
+    None,
+    BasicAttack,
+    Skill,
+    Ultimate
+};
+
 class CombatSystem
 {
-	
 public:
-	bool isVisible = true;                                        //可視化
-	std::vector<Character*>participants;                          //参加者リスト
-	void toggleVisibility();                                     // 可視化の切り替え
-	void displayTurnOrder();                                     //行動順の表示
-	void renderUI(int screenWidth, int screenHeight);           //UIの描画
-	void addParticipant(Character* character);                  //参加者の追加関数
-	void executeSkill(Character* attacker, Character* target);
+    bool isVisible = true;
+    std::vector<Character*> participants;
+    BattleState battleState = BattleState::InProgress;
+
+    void toggleVisibility();
+    void displayTurnOrder();
+    void renderUI(int screenWidth, int screenHeight);
+    void addParticipant(Character* character);
+    void executeSkill(Character* attacker, Character* target);
+    void executeGuard(Character* character);
+    void resetBattle();
+
+private:
+    bool enemyActionQueued = false;
+    double enemyActionTime = 0.0;
+    bool isBattleLogOpen = false;
+    BattleCommand pendingCommand = BattleCommand::None;
+    Character* markedTarget = nullptr;
+    std::vector<std::string> battleLog;
+
+    void sortTurnOrder();
+    void advanceTurn(Character* character);
+    void checkBattleState();
+    Character* getActiveCharacter();
+    Character* getRandomAliveTarget(int isAlly);
+    void renderBattleScene(Character* activeChar, int screenWidth, int screenHeight);
+    void renderBattleCards(Character* activeChar, float screenWidth, float marginX, float marginY, float cardWidth, float cardHeight, float spacingY);
+    void renderActionMenu(Character* activeChar, int screenWidth, int screenHeight);
+    void renderBattleLogWindow(int screenWidth, int screenHeight);
+    void chooseCommand(BattleCommand command);
+    void executeCommand(Character* attacker, Character* target);
+    void addLog(const std::string& text);
 };
 
-//skill構造体
 struct Skill {
-	std::string name;//スキル名
-	int power;       //スキルの威力
-	int cost;        //スキルのコスト
+    std::string name;
+    int power;
+    int cost;
 };
-void processInput(GLFWwindow* window, CombatSystem& combatSystem);//入力処理関数
+
+void processInput(GLFWwindow* window, CombatSystem& combatSystem);

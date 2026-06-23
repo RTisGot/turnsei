@@ -10,12 +10,12 @@ extern bool g_StoryNeedsLoad;
 
 void TitleUpdate()
 {
-	ImGui::SetNextWindowPos(ImVec2(0, 0)); // 左上に配置
+	ImGui::SetNextWindowPos(ImVec2(0, 0)); // 
 	ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-	//ImGuiのウィンドウを開始
+	//ImGui
 	ImGui::Begin("Main Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
-	//スタートボタンを押されたらシーン移動
+	//
 	if (ImGui::Button("Click to Start", ImVec2(200, 100))) {
 		std::cout << "Game Start" << std::endl;
 		currentScene = Scene::StoryEvent;
@@ -25,13 +25,18 @@ void TitleUpdate()
 		}
 	}
 
+	if (ImGui::Button("Battle Demo", ImVec2(200, 100)))
+	{
+		currentScene = Scene::Battle;
+	}
+
 	if (ImGui::Button("Setting", ImVec2(200, 100)))
 	{
 		std::cout << "Setting" << std::endl;
 
 	}
 
-	if (ImGui::Button("Exit", ImVec2(200,100)))
+	if (ImGui::Button("Exit", ImVec2(200, 100)))
 	{
 		std::cout << "Exit" << std::endl;
 		exit(0);
