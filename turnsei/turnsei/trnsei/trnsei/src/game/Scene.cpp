@@ -12,21 +12,26 @@
 
 Player g_Player;
 
-// Assimpで読み込んだシーンデータを保持するポインタ
+// Assimp縺ｧ隱ｭ縺ｿ霎ｼ繧薙□繧ｷ繝ｼ繝ｳ繝�繝ｼ繧ｿ繧剃ｿ晄戟縺吶ｋ繝昴う繝ｳ繧ｿ
 const aiScene* g_WetlandScene = nullptr;
 Assimp::Importer g_Importer;
-//シーン遷移を管理する
+//繧ｷ繝ｼ繝ｳ驕ｷ遘ｻ繧堤ｮ｡逅�縺吶ｋ
 
-//現在のシーンを保持する変数(Title)
+//迴ｾ蝨ｨ縺ｮ繧ｷ繝ｼ繝ｳ繧剃ｿ晄戟縺吶ｋ螟画焚(Title)
 Scene currentScene = Scene::Title;
 
 void SceneUpdate(Scene nextScene)
 {
-	currentScene = nextScene;//次の画面へ遷移
+	currentScene = nextScene;//谺｡縺ｮ逕ｻ髱｢縺ｸ驕ｷ遘ｻ
 }
 
 void MainUpdate(CombatSystem& combatSystem, GLFWwindow* window) {
-	std::cout << "MainUpdate currentScene: " << (int)currentScene << std::endl;
+	int screenWidth = 1280;
+	int screenHeight = 720;
+	if (window) {
+		glfwGetWindowSize(window, &screenWidth, &screenHeight);
+	}
+
 	switch (currentScene) {
 	case Scene::Title:
 		TitleUpdate();
@@ -35,10 +40,10 @@ void MainUpdate(CombatSystem& combatSystem, GLFWwindow* window) {
 		StoryEvent();
 		break;
 	case Scene::Field:
-		FieldUpdate();
+		FieldUpdate(combatSystem);
 		break;
 	case Scene::Battle:
-		combatSystem.renderUI(1280, 780);
+		combatSystem.renderUI(screenWidth, screenHeight);
 		break;
 	}
 }

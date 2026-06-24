@@ -5,9 +5,12 @@
 
 #include "Character.h"
 #include "CombatSystem.h"
+#include "../../assets/ImportedModel.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
@@ -49,6 +52,46 @@ namespace
     GLuint g_battleCubeEbo = 0;
     GLuint g_battleFloorVao = 0;
     GLuint g_battleFloorVbo = 0;
+    ImportedModel g_enemyModels[5];
+    bool g_enemyModelLoadAttempted = false;
+
+    bool FileExists(const std::string& path)
+    {
+        std::ifstream file(path, std::ios::binary);
+        return file.good();
+    }
+
+    void LoadBattleEnemyModels()
+    {
+        if (g_enemyModelLoadAttempted) return;
+        g_enemyModelLoadAttempted = true;
+
+        const char* extensions[] = { ".fbx", ".obj", ".gltf", ".glb" };
+        const char* roots[] = { "Resource/", "../trnsei/Resource/" };
+
+        for (int modelIndex = 0; modelIndex < 5; ++modelIndex) {
+            std::string numberedName = "Enemy" + std::to_string(modelIndex + 1);
+            for (const char* root : roots) {
+                for (const char* extension : extensions) {
+                    std::string path = std::string(root) + numberedName + extension;
+                    if (FileExists(path) && g_enemyModels[modelIndex].load(path)) {
+                        break;
+                    }
+                }
+                if (g_enemyModels[modelIndex].isLoaded()) break;
+            }
+        }
+
+        if (!g_enemyModels[0].isLoaded()) {
+            for (const char* root : roots) {
+                for (const char* extension : extensions) {
+                    std::string path = std::string(root) + "Enemy" + extension;
+                    if (FileExists(path) && g_enemyModels[0].load(path)) break;
+                }
+                if (g_enemyModels[0].isLoaded()) break;
+            }
+        }
+    }
 
     GLuint CompileBattleShader(GLenum type, const char* source)
     {
@@ -126,6 +169,8 @@ void main()
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
         glEnableVertexAttribArray(0);
         glBindVertexArray(0);
+
+        LoadBattleEnemyModels();
     }
 
     ImVec2 WorldToScreen(const glm::vec3& worldPosition, const glm::mat4& viewProjection, int width, int height)
@@ -185,13 +230,13 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
             color = glm::vec3(0.18f, 0.55f, 0.88f);
         }
         else {
-            float spacing = 3.0f;
+            float spacing = 2.15f;
             float x = (enemyIndex - (enemyCount - 1) * 0.5f) * spacing;
-            position = glm::vec3(x + 1.4f, 0.0f, -1.5f);
-            scale = glm::vec3(1.55f, 2.7f, 1.55f);
+            float depth = -1.6f + std::abs(enemyIndex - (enemyCount - 1) * 0.5f) * 0.22f;
+            position = glm::vec3(x + 1.5f, 0.0f, depth);
+            scale = glm::vec3(2.5f, 2.7f, 2.5f);
             color = markedTarget == character ? glm::vec3(1.0f, 0.76f, 0.12f) : glm::vec3(0.82f, 0.20f, 0.18f);
             enemyPositions.push_back(std::make_pair(character, position));
-            ++enemyIndex;
         }
 
         glm::mat4 model(1.0f);
@@ -199,8 +244,24 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         model = glm::scale(model, scale);
         glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniform3fv(glGetUniformLocation(g_battleShader, "color"), 1, glm::value_ptr(color));
-        glBindVertexArray(g_battleCubeVao);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+        if (character->isAlly == 0) {
+            int modelIndex = enemyIndex < 5 ? enemyIndex : 0;
+            ImportedModel& importedModel = g_enemyModels[modelIndex].isLoaded()
+                ? g_enemyModels[modelIndex]
+                : g_enemyModels[0];
+            if (importedModel.isLoaded()) {
+                importedModel.draw();
+            }
+            else {
+                glBindVertexArray(g_battleCubeVao);
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+            }
+            ++enemyIndex;
+        }
+        else {
+            glBindVertexArray(g_battleCubeVao);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+        }
     }
     glBindVertexArray(0);
     glDisable(GL_DEPTH_TEST);
@@ -408,7 +469,7 @@ void CombatSystem::renderUI(int screenWidth, int screenHeight)
         }
 
         renderBattleScene(activeChar, screenWidth, screenHeight);
-        renderBattleCards(activeChar, (float)screenWidth, 20.f, 20.f, 280.0f, 96.0f, 10.f);
+        renderBattleCards(activeChar, (float)screenWidth, 20.f, 20.f, 280.0f, 68.0f, 6.f);
         renderActionMenu(activeChar, screenWidth, screenHeight);
         renderBattleLogWindow(screenWidth, screenHeight);
         return;
