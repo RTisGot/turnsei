@@ -1,55 +1,65 @@
 #include "Player.h"
+#include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+namespace
+{
+    float NormalizeAngle(float angle)
+    {
+        while (angle > 180.0f) angle -= 360.0f;
+        while (angle < -180.0f) angle += 360.0f;
+        return angle;
+    }
+}
 
 void Player::Init() {
-    // ‚±‚±‚É—§•û‘Ì‚Ì’¸“_ƒf[ƒ^‚ð’è‹`istatic“™‚É‚µ‚Äƒtƒ@ƒCƒ‹“à‚É‰B•Áj
-  // ’¸“_ƒf[ƒ^ (Position: 3, Color: 3)
+    // ã“ã“ã«ç«‹æ–¹ä½“ã®é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã‚’å®šç¾©ï¼ˆstaticç­‰ã«ã—ã¦ãƒ•ã‚¡ã‚¤ãƒ«å†…ã«éš è”½ï¼‰
+  // é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ (Position: 3, Color: 3)
     float vertices[] = {
-        // À•W (x, y, z)          // F (r, g, b)
-        // ’ê–Ê (y=0)
+        // åº§æ¨™ (x, y, z)          // è‰² (r, g, b)
+        // åº•é¢ (y=0)
         -0.5f,  0.0f, -0.5f,  0.4f, 0.2f, 0.1f, // 0
          0.5f,  0.0f, -0.5f,  0.4f, 0.2f, 0.1f, // 1
          0.5f,  0.0f,  0.5f,  0.4f, 0.2f, 0.1f, // 2
         -0.5f,  0.0f,  0.5f,  0.4f, 0.2f, 0.1f, // 3
 
-        // ã–Ê (y=2.0 l‚Ì‚‚³)
+        // ä¸Šé¢ (y=2.0 äººã®é«˜ã•)
         -0.5f,  2.0f, -0.5f,  0.8f, 0.4f, 0.2f, // 4
          0.5f,  2.0f, -0.5f,  0.8f, 0.4f, 0.2f, // 5
          0.5f,  2.0f,  0.5f,  0.8f, 0.4f, 0.2f, // 6
         -0.5f,  2.0f,  0.5f,  0.8f, 0.4f, 0.2f  // 7
     };
 
-    // ƒCƒ“ƒfƒbƒNƒXƒf[ƒ^iŽOŠpŒ`‚Ì‘g‚Ý‡‚í‚¹j
+    // ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ãƒ‡ãƒ¼ã‚¿ï¼ˆä¸‰è§’å½¢ã®çµ„ã¿åˆã‚ã›ï¼‰
     unsigned int indices[] = {
-        // ’ê–Ê
+        // åº•é¢
         0, 1, 2,  2, 3, 0,
-        // ‘O–Ê
+        // å‰é¢
         3, 2, 6,  6, 7, 3,
-        // ‰E‘¤–Ê
+        // å³å´é¢
         2, 1, 5,  5, 6, 2,
-        // ”w–Ê
+        // èƒŒé¢
         1, 0, 4,  4, 5, 1,
-        // ¶‘¤–Ê
+        // å·¦å´é¢
         0, 3, 7,  7, 4, 0,
-        // ã–Ê
+        // ä¸Šé¢
         4, 5, 6,  6, 7, 4
     };
 
-    // OpenGL‚Ìƒoƒbƒtƒ@¶¬iglGenVertexArrays‚È‚Çj
+    // OpenGLã®ãƒãƒƒãƒ•ã‚¡ç”Ÿæˆï¼ˆglGenVertexArraysãªã©ï¼‰
     // ...
-    this->indexCount = 36; // —§•û‘Ì‚Ì‘SƒCƒ“ƒfƒbƒNƒX”
+    this->indexCount = 36; // ç«‹æ–¹ä½“ã®å…¨ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹æ•°
 }
 
 void Player::Draw(GLuint shaderProgram,glm::mat4 view,glm::mat4 projection) {
     glUseProgram(shaderProgram);
 
-    // ƒvƒŒƒCƒ„[‚ÌˆÊ’u‚Æ‰ñ“]‚ð”½‰f‚µ‚½s—ñ‚ðì‚é
+    // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ä½ç½®ã¨å›žè»¢ã‚’åæ˜ ã—ãŸè¡Œåˆ—ã‚’ä½œã‚‹
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, position);
     model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0, 1, 0));
-    model = glm::scale(model, glm::vec3(1.0f, 2.0f, 1.0f)); // g‘ã‚í‚è‚È‚Ì‚Å­‚µc’·‚É
+    model = glm::scale(model, glm::vec3(1.0f, 2.0f, 1.0f)); // èº«ä»£ã‚ã‚Šãªã®ã§å°‘ã—ç¸¦é•·ã«
 
     GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -61,21 +71,51 @@ void Player::Draw(GLuint shaderProgram,glm::mat4 view,glm::mat4 projection) {
 void Player::Update(float deltaTime, GLFWwindow* window) {
     if (window == nullptr) {
         printf("Error: window is nullptr!\n");
+        moving = false;
+        moveVelocity = glm::vec3(0.0f);
         return;
     }
 
-    float moveSpeed = 5.0f; // ˆÚ“®‘¬“x
-    glm::vec3 moveDir(0.0f);
+    float moveSpeed = 5.0f; // ç§»å‹•é€Ÿåº¦
+    glm::vec3 inputDir(0.0f);
 
-    // WASDƒL[‚Ì“ü—Í”»’è
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) moveDir.z -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) moveDir.z += 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveDir.x -= 1.0f;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveDir.x += 1.0f;
+    // WASDã‚­ãƒ¼ã®å…¥åŠ›åˆ¤å®š
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) inputDir.z -= 1.0f;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) inputDir.z += 1.0f;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) inputDir.x -= 1.0f;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) inputDir.x += 1.0f;
 
-    // ŽÎ‚ßˆÚ“®‚Å‚à‘¬‚­‚È‚ç‚È‚¢‚æ‚¤‚É³‹K‰»
-    if (glm::length(moveDir) > 0.0f) {
-        moveDir = glm::normalize(moveDir);
-        position += moveDir * moveSpeed * deltaTime;
+    // æ–œã‚ç§»å‹•ã§ã‚‚é€Ÿããªã‚‰ãªã„ã‚ˆã†ã«æ­£è¦åŒ–
+    if (glm::length(inputDir) > 0.0f) {
+        inputDir = glm::normalize(inputDir);
+    }
+
+    bool hasInput = glm::length(inputDir) > 0.0f;
+    float currentSpeed = glm::length(moveVelocity);
+
+    if (hasInput) {
+        float targetRotationY = glm::degrees(std::atan2(inputDir.x, inputDir.z)) + 180.0f;
+        float angleDelta = NormalizeAngle(targetRotationY - rotationY);
+        float maxTurn = 540.0f * deltaTime;
+        if (angleDelta > maxTurn) angleDelta = maxTurn;
+        if (angleDelta < -maxTurn) angleDelta = -maxTurn;
+        rotationY = NormalizeAngle(rotationY + angleDelta);
+    }
+
+    float targetSpeed = hasInput ? moveSpeed : 0.0f;
+    float response = hasInput ? 10.0f : 14.0f;
+    float blend = 1.0f - std::exp(-response * deltaTime);
+    currentSpeed += (targetSpeed - currentSpeed) * blend;
+
+    if (currentSpeed > 0.02f) {
+        float forwardAngle = glm::radians(rotationY - 180.0f);
+        glm::vec3 moveDir(std::sin(forwardAngle), 0.0f, std::cos(forwardAngle));
+        moveVelocity = moveDir * currentSpeed;
+        position += moveVelocity * deltaTime;
+        moving = currentSpeed > 0.12f;
+    }
+    else {
+        moveVelocity = glm::vec3(0.0f);
+        moving = false;
     }
 }

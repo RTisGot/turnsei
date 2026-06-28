@@ -1,4 +1,3 @@
-#define GLEW_STATIC
 #include <glew.h>
 #include <GLFW/glfw3.h>
 
@@ -10,6 +9,7 @@
 #include <glm/glm.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <iostream>
 #include <limits>
@@ -27,6 +27,7 @@ namespace
     GLuint wetlandVao = 0;
     GLuint wetlandVbo = 0;
     GLuint wetlandEbo = 0;
+    float wetlandAnimationTime = 0.0f;
 }
 
 unsigned int indexCount = 0;
@@ -121,6 +122,14 @@ bool LoadWetland(const std::string& filePath)
     return true;
 }
 
+void UpdateWetlandAnimation(float deltaSeconds)
+{
+    wetlandAnimationTime += std::max(0.0f, deltaSeconds);
+    if (wetlandAnimationTime > 10000.0f) {
+        wetlandAnimationTime = std::fmod(wetlandAnimationTime, 10000.0f);
+    }
+}
+
 void DrawWetland(Shader& shader, glm::mat4 view, glm::mat4 projection)
 {
     if (wetlandVao == 0 || indexCount == 0) return;
@@ -129,6 +138,10 @@ void DrawWetland(Shader& shader, glm::mat4 view, glm::mat4 projection)
     shader.setMat4("projection", projection);
     shader.setMat4("model", glm::mat4(1.0f));
     shader.setMat4("view", view);
+    shader.setVec3("baseColor", glm::vec3(0.22f, 0.48f, 0.28f));
+    shader.setVec3("lightDir", glm::vec3(-0.35f, 0.85f, 0.30f));
+    glUniform1f(glGetUniformLocation(shader.ID, "uTime"), wetlandAnimationTime);
+    glUniform1f(glGetUniformLocation(shader.ID, "uMapAnimationStrength"), 1.0f);
 
     glBindVertexArray(wetlandVao);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);

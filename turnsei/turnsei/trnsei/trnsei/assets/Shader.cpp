@@ -10,15 +10,15 @@
 #include "Shader.h"
 
 Shader::Shader(const char* vertexPath, const char* fragmentPath) {
-    // 1. ƒtƒ@ƒCƒ‹‚©‚çƒVƒF[ƒ_[ƒR[ƒh‚ğ“Ç‚İ‚Ş
+    // 1. ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚³ãƒ¼ãƒ‰ã‚’èª­ã¿è¾¼ã‚€
     std::string vertexCode;
     std::string fragmentCode;
-    std::ifstream vShaderFile;//’¸“_ƒVƒF[ƒ_[—p
-	std::ifstream fShaderFile;//ƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_[—p
+    std::ifstream vShaderFile;//é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ç”¨
+	std::ifstream fShaderFile;//ãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ç”¨
 
-    //—áŠO‚ğƒXƒ[
-	//std::ifstream::failbit: ƒtƒ@ƒCƒ‹‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚½ê‡‚ÉƒXƒ[‚³‚ê‚é—áŠO
-	//std::ifstream::badbit: ƒtƒ@ƒCƒ‹‚Ì“Ç‚İ‚İ’†‚É’v–½“I‚ÈƒGƒ‰[‚ª”­¶‚µ‚½ê‡‚ÉƒXƒ[‚³‚ê‚é—áŠO
+    //ä¾‹å¤–ã‚’ã‚¹ãƒ­ãƒ¼
+	//std::ifstream::failbit: ãƒ•ã‚¡ã‚¤ãƒ«ã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ãŸå ´åˆã«ã‚¹ãƒ­ãƒ¼ã•ã‚Œã‚‹ä¾‹å¤–
+	//std::ifstream::badbit: ãƒ•ã‚¡ã‚¤ãƒ«ã®èª­ã¿è¾¼ã¿ä¸­ã«è‡´å‘½çš„ãªã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ãŸå ´åˆã«ã‚¹ãƒ­ãƒ¼ã•ã‚Œã‚‹ä¾‹å¤–
     vShaderFile.exceptions(std::ifstream::failbit | std :: ifstream::badbit);
     fShaderFile.exceptions(std::ifstream::failbit | std :: ifstream::badbit);
 
@@ -34,26 +34,26 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
         fragmentCode = fShaderStream.str();
     }
     catch (std::ifstream::failure& e) {
-        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+        std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ: " << e.what() << std::endl;
     }
 
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
 
     unsigned int vertex, fragment;
-    int sucess;
-    char infoLog;
+    int compileSuccess;
+    char infoLog[512];
 
-    //’¸“_ƒVƒF[ƒ_[
+    //é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼
     vertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex, 1, &vShaderCode, NULL);
     glCompileShader(vertex);
-    glGetShaderiv(vertex, GL_COMPILE_STATUS, &sucess);
-    if (!sucess) {
-        glGetShaderInfoLog(vertex, 512, NULL, &infoLog);
+    glGetShaderiv(vertex, GL_COMPILE_STATUS, &compileSuccess);
+    if (!compileSuccess) {
+        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
-    // ƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_[
+    // ãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ãƒ¼
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment, 1, &fShaderCode, NULL);
     glCompileShader(fragment);
@@ -64,7 +64,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
 
-    // 3. ƒVƒF[ƒ_[ƒvƒƒOƒ‰ƒ€‚ÌƒŠƒ“ƒN
+    // 3. ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã®ãƒªãƒ³ã‚¯
     ID = glCreateProgram();
     glAttachShader(ID, vertex);
     glAttachShader(ID, fragment);
@@ -76,7 +76,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
         std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
 
-    // g‚¢I‚í‚Á‚½ŒÂ•Ê‚ÌƒVƒF[ƒ_[‚ğíœ
+    // ä½¿ã„çµ‚ã‚ã£ãŸå€‹åˆ¥ã®ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚’å‰Šé™¤
     glDeleteShader(vertex);
     glDeleteShader(fragment);
 }

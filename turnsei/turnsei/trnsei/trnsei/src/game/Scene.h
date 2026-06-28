@@ -3,29 +3,29 @@
 #include<glm/glm.hpp>
 class CombatSystem;
 struct GLFWwindow;
-// ƒV[ƒ“‚Ìí—Ş‚ğ’è‹`‚·‚é—ñ‹“Œ^
+// ã‚·ãƒ¼ãƒ³ã®ç¨®é¡ã‚’å®šç¾©ã™ã‚‹åˆ—æŒ™å‹
 enum class Scene {
-	StoryEvent, //ƒXƒg[ƒŠ[
-	Title, //ƒ^ƒCƒgƒ‹‰æ–Ê
-	Field, //3D’Tõ
-	Battle,//í“¬‰æ–Ê
-	Gacha, //ƒKƒ`ƒƒ‰æ–Ê
-	Result //í“¬Œã‚ÌƒŠƒUƒ‹ƒg‰æ–Ê
+	StoryEvent, //ã‚¹ãƒˆãƒ¼ãƒªãƒ¼
+	Title, //ã‚¿ã‚¤ãƒˆãƒ«ç”»é¢
+	Field, //3Dæ¢ç´¢
+	Battle,//æˆ¦é—˜ç”»é¢
+	Gacha, //ã‚¬ãƒãƒ£ç”»é¢
+	Result //æˆ¦é—˜å¾Œã®ãƒªã‚¶ãƒ«ãƒˆç”»é¢
 };
 
-//Ÿ‚Ì‰æ–Ê‚Ö‘JˆÚ‚³‚¹‚éŠÖ”
-//nextScene Ÿ‚Ì‰æ–Ê
+//æ¬¡ã®ç”»é¢ã¸é·ç§»ã•ã›ã‚‹é–¢æ•°
+//nextScene æ¬¡ã®ç”»é¢
 void SceneUpdate(Scene nextScene);
 
-//Title‰æ–Ê‚©‚çŸ‚Ì‰æ–Ê‚Ö‘JˆÚ‚³‚¹‚é‚½‚ß‚ÌŠÖ”
+//Titleç”»é¢ã‹ã‚‰æ¬¡ã®ç”»é¢ã¸é·ç§»ã•ã›ã‚‹ãŸã‚ã®é–¢æ•°
 void MainUpdate(CombatSystem& combatSystem, GLFWwindow* window);
 
-//ƒV[ƒ“‚Ì—ñ‹“Œ^‚É‚æ‚éƒXƒe[ƒgŠÇ—
+//ã‚·ãƒ¼ãƒ³ã®åˆ—æŒ™å‹ã«ã‚ˆã‚‹ã‚¹ãƒ†ãƒ¼ãƒˆç®¡ç†
 extern Scene currentScene;
 	
 struct StoryTrigger {
-	glm::vec3 position; // ƒCƒxƒ“ƒg‚ª‹N‚«‚éÀ•W
-	float radius;       // ”»’è‚ÌL‚³
-	bool isUsed;        // ˆê“x‚¾‚¯”­¶‚³‚¹‚é‚½‚ß‚Ìƒtƒ‰ƒO
+	glm::vec3 position; // ã‚¤ãƒ™ãƒ³ãƒˆãŒèµ·ãã‚‹åº§æ¨™
+	float radius;       // åˆ¤å®šã®åºƒã•
+	bool isUsed;        // ä¸€åº¦ã ã‘ç™ºç”Ÿã•ã›ã‚‹ãŸã‚ã®ãƒ•ãƒ©ã‚°
 };
 

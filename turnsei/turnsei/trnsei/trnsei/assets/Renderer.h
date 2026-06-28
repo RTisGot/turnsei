@@ -8,40 +8,40 @@
 #include <vector>
 #include<map>
 
-// ƒtƒHƒ“ƒg•`‰æ—p‚Ì•¶šî•ñiFreeType—pj
+// ãƒ•ã‚©ãƒ³ãƒˆæç”»ç”¨ã®æ–‡å­—æƒ…å ±ï¼ˆFreeTypeç”¨ï¼‰
 struct Glyph {
-    unsigned int TextureID; // •¶šƒeƒNƒXƒ`ƒƒ‚ÌID
-    glm::ivec2   Size;      // •¶š‚ÌƒTƒCƒY
-    glm::ivec2   Bearing;   // ƒx[ƒXƒ‰ƒCƒ“‚©‚ç‚ÌƒIƒtƒZƒbƒg
-    unsigned int Advance;   // Ÿ‚Ì•¶š‚Ö‚ÌƒIƒtƒZƒbƒg
+    unsigned int TextureID; // æ–‡å­—ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ID
+    glm::ivec2   Size;      // æ–‡å­—ã®ã‚µã‚¤ã‚º
+    glm::ivec2   Bearing;   // ãƒ™ãƒ¼ã‚¹ãƒ©ã‚¤ãƒ³ã‹ã‚‰ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
+    unsigned int Advance;   // æ¬¡ã®æ–‡å­—ã¸ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
 };
 
 class Renderer {
 public:
-    // 1. ‰Šú‰»‚ÆŠî–{İ’è
+    // 1. åˆæœŸåŒ–ã¨åŸºæœ¬è¨­å®š
    Renderer();
     ~Renderer();
    
-    // 2. uƒ^[ƒ“§ƒAƒNƒVƒ‡ƒ“v‚Ì‹Šo‰»
-    // ‰æ–Ê‚Ì‰E‘¤‚È‚Ç‚És“®‡ƒ^ƒCƒ€ƒ‰ƒCƒ“‚â–¼‘O‚ğ•\¦‚·‚é
+    // 2. ã€Œã‚¿ãƒ¼ãƒ³åˆ¶ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã€ã®è¦–è¦šåŒ–
+    // ç”»é¢ã®å³å´ãªã©ã«è¡Œå‹•é †ã‚¿ã‚¤ãƒ ãƒ©ã‚¤ãƒ³ã‚„åå‰ã‚’è¡¨ç¤ºã™ã‚‹
     void drawText(std::string text, float x, float y, float scale, glm::vec3 color);
 
 private:
-    // ƒeƒLƒXƒg•`‰æ—p‚Ìƒf[ƒ^
+    // ãƒ†ã‚­ã‚¹ãƒˆæç”»ç”¨ã®ãƒ‡ãƒ¼ã‚¿
     unsigned int textVAO, textVBO;
-    Shader textShader; // æ‚Ù‚Ç‹c˜_‚µ‚½TextShader
+    Shader textShader; // å…ˆã»ã©è­°è«–ã—ãŸTextShader
     
-    // ƒEƒBƒ“ƒhƒEƒTƒCƒYî•ñ
+    // ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚µã‚¤ã‚ºæƒ…å ±
     int screenWidth;
     int screenHeight;
-    glm::mat4 projection; // UI—p‚Ì³Ë‰es—ñ
+    glm::mat4 projection; // UIç”¨ã®æ­£å°„å½±è¡Œåˆ—
 };
 
-// ƒtƒHƒ“ƒg•`‰æ—p‚Ìtexture\‘¢‘Ì
+// ãƒ•ã‚©ãƒ³ãƒˆæç”»ç”¨ã®textureæ§‹é€ ä½“
 struct Text {
-    unsigned int TextureID; // •¶š‚ÌƒeƒNƒXƒ`ƒƒID
-    glm::ivec2   Size;      // •¶š‚ÌƒTƒCƒY
-    glm::ivec2   Bearing;   // ƒx[ƒXƒ‰ƒCƒ“‚©‚ç¶ã‚Ö‚ÌƒIƒtƒZƒbƒg
-    unsigned int Advance;   // Ÿ‚Ì•¶š‚Ü‚Å‚Ì‹——£
+    unsigned int TextureID; // æ–‡å­—ã®ãƒ†ã‚¯ã‚¹ãƒãƒ£ID
+    glm::ivec2   Size;      // æ–‡å­—ã®ã‚µã‚¤ã‚º
+    glm::ivec2   Bearing;   // ãƒ™ãƒ¼ã‚¹ãƒ©ã‚¤ãƒ³ã‹ã‚‰å·¦ä¸Šã¸ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
+    unsigned int Advance;   // æ¬¡ã®æ–‡å­—ã¾ã§ã®è·é›¢
 };
 extern std::map<char, Text> Texts;

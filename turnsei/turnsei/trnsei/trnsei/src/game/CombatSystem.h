@@ -41,6 +41,14 @@ private:
     BattleCommand pendingCommand = BattleCommand::None;
     Character* markedTarget = nullptr;
     std::vector<std::string> battleLog;
+    struct DamagePopup {
+        Character* target = nullptr;
+        int amount = 0;
+        bool isCritical = false;
+        double startTime = 0.0;
+        float xOffset = 0.0f;
+    };
+    std::vector<DamagePopup> damagePopups;
 
     void sortTurnOrder();
     void advanceTurn(Character* character);

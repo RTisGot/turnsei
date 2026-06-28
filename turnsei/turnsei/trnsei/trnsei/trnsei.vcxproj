@@ -24,6 +24,7 @@
     <ProjectGuid>{e98fa932-ad33-42ed-bd4f-20622d89646e}</ProjectGuid>
     <RootNamespace>trnsei</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <VcpkgXUseBuiltInApplocalDeps>true</VcpkgXUseBuiltInApplocalDeps>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -99,7 +100,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)\Extend\GLEW\glew-2.3.1\lib\Release\x64;$(SolutionDir)\Extend\GLFW\glfw-3.4.bin.WIN64\lib-vc2022;$(SolutionDir)..\..\trnsei\Extend\GLEW\glew-2.3.1\lib\Release\x64;$(SolutionDir)..\..\trnsei\Extend\GLFW\glfw-3.4.bin.WIN64\lib-vc2022</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glew32s.lib;glfw3.lib;gdi32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;glfw3.lib;gdi32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,7 +134,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)\Extend\GLEW\glew-2.3.1\lib\Release\x64;$(SolutionDir)\Extend\GLFW\glfw-3.4.bin.WIN64\lib-vc2022;$(SolutionDir)..\..\trnsei\Extend\GLEW\glew-2.3.1\lib\Release\x64;$(SolutionDir)..\..\trnsei\Extend\GLFW\glfw-3.4.bin.WIN64\lib-vc2022</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glew32s.lib;glfw3.lib;gdi32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;glfw3.lib;gdi32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -178,6 +179,19 @@
     <ClInclude Include="src\game\StoryEvent.h" />
     <ClInclude Include="src\game\Title.h" />
   </ItemGroup>
+  <Target Name="CopyVcpkgRuntimeDlls" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <ItemGroup Condition="'$(Configuration)'=='Debug'">
+      <VcpkgRuntimeDll Include="$(ProjectDir)..\..\..\..\vcpkg\installed\x64-windows\debug\bin\*.dll" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(Configuration)'=='Release'">
+      <VcpkgRuntimeDll Include="$(ProjectDir)..\..\..\..\vcpkg\installed\x64-windows\bin\*.dll" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(VcpkgRuntimeDll)"
+      DestinationFolder="$(TargetDir)"
+      SkipUnchangedFiles="true"
+      Condition="'@(VcpkgRuntimeDll)'!=''" />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

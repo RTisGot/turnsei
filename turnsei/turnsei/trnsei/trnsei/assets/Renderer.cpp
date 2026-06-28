@@ -5,18 +5,18 @@
 std::map<char, Text> Texts;
 
 Renderer::Renderer() {
-	// ‹ó‚Å‚à—Ç‚¢‚Ì‚ÅA’†gi{}j‚ª•K—v‚Å‚·
+	// ç©ºã§ã‚‚è‰¯ã„ã®ã§ã€ä¸­èº«ï¼ˆ{}ï¼‰ãŒå¿…è¦ã§ã™
 }
 
-// ƒfƒXƒgƒ‰ƒNƒ^‚à“¯—l
+// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ã‚‚åŒæ§˜
 Renderer::~Renderer() {
 }
 
 void Renderer::drawText(std::string text, float x, float y, float scale, glm::vec3 color)
 {
-	textShader.use();       // ƒVƒF[ƒ_[‚ð—LŒø‰»
+	textShader.use();       // ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚’æœ‰åŠ¹åŒ–
 	textShader.setVec3("textColor", color);
-	glActiveTexture(GL_TEXTURE0);//ƒeƒNƒXƒ`ƒƒ[‚ð‰Šú‰»
+	glActiveTexture(GL_TEXTURE0);//ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒ¼ã‚’åˆæœŸåŒ–
 	glBindVertexArray(textVAO);
 
 	for (std::string::const_iterator c = text.begin(); c != text.end(); c++)
@@ -28,16 +28,16 @@ void Renderer::drawText(std::string text, float x, float y, float scale, glm::ve
 		float w = ch.Size.x * scale;
 		float h = ch.Size.y * scale;
 
-		// 3. Še•¶Žš‚É‘Î‰ž‚·‚éŽlŠpŒ`iƒ|ƒŠƒSƒ“j‚Ì’¸“_ƒf[ƒ^‚ðXV
+		// 3. å„æ–‡å­—ã«å¯¾å¿œã™ã‚‹å››è§’å½¢ï¼ˆãƒãƒªã‚´ãƒ³ï¼‰ã®é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã‚’æ›´æ–°
 		float vertices[] = { xpos, ypos, w, h };
 		glBindBuffer(GL_ARRAY_BUFFER, textVBO);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 
-		// 4. •¶ŽšƒeƒNƒXƒ`ƒƒ‚ð•`‰æ
+		// 4. æ–‡å­—ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’æç”»
 		glBindTexture(GL_TEXTURE_2D, ch.TextureID);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-		// 5. ŽŸ‚Ì•¶Žš‚Öi‚ÞiƒJ[ƒ\ƒ‹ˆÚ“®j
+		// 5. æ¬¡ã®æ–‡å­—ã¸é€²ã‚€ï¼ˆã‚«ãƒ¼ã‚½ãƒ«ç§»å‹•ï¼‰
 		x += (ch.Advance >> 6) * scale;
 	
 	}

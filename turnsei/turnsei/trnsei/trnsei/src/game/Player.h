@@ -6,21 +6,24 @@
 
 #include <vector>
 
-//Player‚ÌƒNƒ‰ƒX
+//Playerã®ã‚¯ãƒ©ã‚¹
 class Player {
 public:
     glm::vec3 position;
     float rotationY;
 
-    // ‰Šú‰»i‚±‚±‚Å—§•û‘Ì‚ÌVBO‚È‚Ç‚ğì‚éj
+    // åˆæœŸåŒ–ï¼ˆã“ã“ã§ç«‹æ–¹ä½“ã®VBOãªã©ã‚’ä½œã‚‹ï¼‰
     void Init();
-    // •`‰æ
+    // æç”»
     void Draw(GLuint shaderProgram, glm::mat4, glm::mat4);
 
-    // –ˆƒtƒŒ[ƒ€‚ÌXViˆÚ“®ˆ—j
+    // æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã®æ›´æ–°ï¼ˆç§»å‹•å‡¦ç†ï¼‰
     void Update(float deltaTime, GLFWwindow* window);
+    bool isMoving() const { return moving; }
 private:
-    // «—ˆ“I‚ÉFBXƒ‚ƒfƒ‹‚ÌƒNƒ‰ƒXiModel“™j‚É·‚µ‘Ö‚¦‚é•”•ª
+    // å°†æ¥çš„ã«FBXãƒ¢ãƒ‡ãƒ«ã®ã‚¯ãƒ©ã‚¹ï¼ˆModelç­‰ï¼‰ã«å·®ã—æ›¿ãˆã‚‹éƒ¨åˆ†
     GLuint vao, vbo, ebo;
     int indexCount;
+    bool moving = false;
+    glm::vec3 moveVelocity = glm::vec3(0.0f);
 };
