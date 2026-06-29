@@ -18,7 +18,7 @@ public:
     void Draw(GLuint shaderProgram, glm::mat4, glm::mat4);
 
     // 毎フレームの更新（移動処理）
-    void Update(float deltaTime, GLFWwindow* window);
+    void Update(float deltaTime, GLFWwindow* window, float cameraYaw = 0.0f);
     bool isMoving() const { return moving; }
 private:
     // 将来的にFBXモデルのクラス（Model等）に差し替える部分

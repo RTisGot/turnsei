@@ -68,24 +68,21 @@ void Player::Draw(GLuint shaderProgram,glm::mat4 view,glm::mat4 projection) {
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 }
 
-void Player::Update(float deltaTime, GLFWwindow* window) {
+void Player::Update(float deltaTime, GLFWwindow* window, float cameraYaw) {
     if (window == nullptr) {
-        printf("Error: window is nullptr!\n");
         moving = false;
         moveVelocity = glm::vec3(0.0f);
         return;
     }
 
-    float moveSpeed = 5.0f; // 移動速度
+    float moveSpeed = 5.0f;
     glm::vec3 inputDir(0.0f);
 
-    // WASDキーの入力判定
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) inputDir.z -= 1.0f;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) inputDir.z += 1.0f;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) inputDir.x -= 1.0f;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) inputDir.x += 1.0f;
 
-    // 斜め移動でも速くならないように正規化
     if (glm::length(inputDir) > 0.0f) {
         inputDir = glm::normalize(inputDir);
     }
@@ -94,9 +91,24 @@ void Player::Update(float deltaTime, GLFWwindow* window) {
     float currentSpeed = glm::length(moveVelocity);
 
     if (hasInput) {
-        float targetRotationY = glm::degrees(std::atan2(inputDir.x, inputDir.z)) + 180.0f;
+        float camForwardX = -std::sin(cameraYaw);
+        float camForwardZ = -std::cos(cameraYaw);
+        float camRightX = -camForwardZ;
+        float camRightZ = camForwardX;
+
+        glm::vec3 worldDir(
+            camForwardX * (-inputDir.z) + camRightX * inputDir.x,
+            0.0f,
+            camForwardZ * (-inputDir.z) + camRightZ * inputDir.x
+        );
+
+        if (glm::length(worldDir) > 0.001f) {
+            worldDir = glm::normalize(worldDir);
+        }
+
+        float targetRotationY = glm::degrees(std::atan2(worldDir.x, worldDir.z));
         float angleDelta = NormalizeAngle(targetRotationY - rotationY);
-        float maxTurn = 540.0f * deltaTime;
+        float maxTurn = 720.0f * deltaTime;
         if (angleDelta > maxTurn) angleDelta = maxTurn;
         if (angleDelta < -maxTurn) angleDelta = -maxTurn;
         rotationY = NormalizeAngle(rotationY + angleDelta);
@@ -108,7 +120,7 @@ void Player::Update(float deltaTime, GLFWwindow* window) {
     currentSpeed += (targetSpeed - currentSpeed) * blend;
 
     if (currentSpeed > 0.02f) {
-        float forwardAngle = glm::radians(rotationY - 180.0f);
+        float forwardAngle = glm::radians(rotationY);
         glm::vec3 moveDir(std::sin(forwardAngle), 0.0f, std::cos(forwardAngle));
         moveVelocity = moveDir * currentSpeed;
         position += moveVelocity * deltaTime;

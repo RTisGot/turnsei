@@ -14,6 +14,7 @@ public:
     void updateAnimation(float deltaSeconds);
     bool playAnimationByName(const std::string& keyword);
     bool playAnimationByIndex(size_t index);
+    void resetAnimationPose();
     void draw() const;
     bool isLoaded() const { return vao != 0 && indexCount > 0; }
     bool hasAnimation() const { return animated; }
@@ -100,7 +101,9 @@ private:
     glm::vec3 boundsMax = glm::vec3(0.0f);
     glm::vec3 normalizationCenter = glm::vec3(0.0f);
     float normalizationScale = 1.0f;
-    glm::mat4 rootInverse = glm::mat4(1.0f);
+    glm::mat4 worldTransform = glm::mat4(1.0f);
+    glm::mat4 worldTransformInverse = glm::mat4(1.0f);
+    glm::mat3 worldNormalMatrix = glm::mat3(1.0f);
     std::vector<VertexSource> sourceVertices;
     std::vector<VertexGpu> gpuVertices;
     std::vector<Bone> bones;

@@ -15,10 +15,15 @@ struct Character
 	int critical;       
 	int criticalDamage; 
 
-	int currentHp;   
-	int isAlly;     
+	int currentHp;
+	int isAlly;
 	bool isGuarding = false;
 	int turnGauge = 0;
+
+	int charge = 0;
+	int maxCharge = 5;
+	int energy = 0;
+	int maxEnergy = 100;
 
 
 	bool isEnemy() const;

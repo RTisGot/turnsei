@@ -79,7 +79,7 @@ namespace
 
     GLuint LoadTextureFile(const std::string& path)
     {
-        stbi_set_flip_vertically_on_load(true);
+        stbi_set_flip_vertically_on_load(false);
         int width = 0;
         int height = 0;
         int channels = 0;
@@ -192,7 +192,8 @@ bool ImportedModel::load(const std::string& filePath)
         aiProcess_Triangulate |
         aiProcess_JoinIdenticalVertices |
         aiProcess_ImproveCacheLocality |
-        aiProcess_GenSmoothNormals
+        aiProcess_GenSmoothNormals |
+        aiProcess_FlipUVs
     );
 
     if (!scene || !scene->mRootNode || scene->mNumMeshes == 0) {
@@ -230,14 +231,31 @@ bool ImportedModel::load(const std::string& filePath)
         return index;
     };
     copyNode(scene->mRootNode);
-    rootInverse = glm::inverse(ToGlm(scene->mRootNode->mTransformation));
+
+    std::map<unsigned int, glm::mat4> meshGlobalTransforms;
+    std::function<void(const aiNode*, const glm::mat4&)> findMeshTransforms =
+        [&](const aiNode* node, const glm::mat4& parentGlobal) {
+            glm::mat4 globalTransform = parentGlobal * ToGlm(node->mTransformation);
+            for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
+                meshGlobalTransforms[node->mMeshes[i]] = globalTransform;
+            }
+            for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+                findMeshTransforms(node->mChildren[i], globalTransform);
+            }
+        };
+    findMeshTransforms(scene->mRootNode, glm::mat4(1.0f));
+
+    if (!meshGlobalTransforms.empty()) {
+        worldTransform = meshGlobalTransforms.begin()->second;
+    }
+    else {
+        worldTransform = ToGlm(scene->mRootNode->mTransformation);
+    }
+    worldTransformInverse = glm::inverse(worldTransform);
+    worldNormalMatrix = glm::mat3(worldTransform);
 
     for (unsigned int meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
-        if (sceneHasAnimation && mesh->mNumBones == 0) {
-            std::cout << "Skipped unskinned animated mesh: " << mesh->mName.C_Str() << std::endl;
-            continue;
-        }
 
         unsigned int vertexOffset = static_cast<unsigned int>(sourceVertices.size());
         unsigned int indexOffset = static_cast<unsigned int>(indices.size());
@@ -246,8 +264,7 @@ bool ImportedModel::load(const std::string& filePath)
 
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
             VertexSource vertex{};
-            glm::vec3 position(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-            vertex.position = position;
+            vertex.position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
             if (mesh->HasNormals()) {
                 vertex.normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
             }
@@ -263,8 +280,9 @@ bool ImportedModel::load(const std::string& filePath)
                 vertex.texCoords = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
             }
             sourceVertices.push_back(vertex);
-            boundsMin = glm::min(boundsMin, position);
-            boundsMax = glm::max(boundsMax, position);
+            glm::vec3 worldPos = glm::vec3(worldTransform * glm::vec4(vertex.position, 1.0f));
+            boundsMin = glm::min(boundsMin, worldPos);
+            boundsMax = glm::max(boundsMax, worldPos);
         }
 
         for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
@@ -371,51 +389,103 @@ bool ImportedModel::load(const std::string& filePath)
     float largestDimension = std::max(size.x, std::max(size.y, size.z));
     if (largestDimension <= 0.0001f) return false;
 
-    normalizationCenter = glm::vec3(
-        (boundsMin.x + boundsMax.x) * 0.5f,
-        boundsMin.y,
-        (boundsMin.z + boundsMax.z) * 0.5f
-    );
-    normalizationScale = largestDimension;
-    gpuVertices.resize(sourceVertices.size());
-    for (size_t i = 0; i < sourceVertices.size(); ++i) {
-        gpuVertices[i].position = (sourceVertices[i].position - normalizationCenter) / normalizationScale;
-        gpuVertices[i].normal = glm::normalize(sourceVertices[i].normal);
-        gpuVertices[i].color = sourceVertices[i].color;
-        gpuVertices[i].texCoords = sourceVertices[i].texCoords;
-    }
-
     if (vao == 0) glGenVertexArrays(1, &vao);
     if (vbo == 0) glGenBuffers(1, &vbo);
     if (ebo == 0) glGenBuffers(1, &ebo);
 
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(
-        GL_ARRAY_BUFFER,
-        gpuVertices.size() * sizeof(VertexGpu),
-        gpuVertices.data(),
-        animated ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW
-    );
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, position)));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, normal)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, color)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, texCoords)));
-    glEnableVertexAttribArray(3);
-    glBindVertexArray(0);
-
     indexCount = static_cast<GLsizei>(indices.size());
     drawParts = newDrawParts;
-    if (animated) updateAnimation(0.0f);
+    gpuVertices.resize(sourceVertices.size());
+
+    if (animated) {
+        normalizationCenter = glm::vec3(0.0f);
+        normalizationScale = 1.0f;
+        for (size_t i = 0; i < sourceVertices.size(); ++i) {
+            gpuVertices[i].position = sourceVertices[i].position;
+            gpuVertices[i].normal = glm::normalize(sourceVertices[i].normal);
+            gpuVertices[i].color = sourceVertices[i].color;
+            gpuVertices[i].texCoords = sourceVertices[i].texCoords;
+        }
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, gpuVertices.size() * sizeof(VertexGpu), gpuVertices.data(), GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, position)));
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, normal)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, color)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, texCoords)));
+        glEnableVertexAttribArray(3);
+        glBindVertexArray(0);
+
+        updateAnimation(0.0f);
+
+        glm::vec3 skinnedMin(std::numeric_limits<float>::max());
+        glm::vec3 skinnedMax(std::numeric_limits<float>::lowest());
+        for (const auto& v : gpuVertices) {
+            skinnedMin = glm::min(skinnedMin, v.position);
+            skinnedMax = glm::max(skinnedMax, v.position);
+        }
+
+        glm::vec3 skinnedSize = skinnedMax - skinnedMin;
+        normalizationScale = std::max(skinnedSize.x, std::max(skinnedSize.y, skinnedSize.z));
+        if (normalizationScale <= 0.0001f) return false;
+        normalizationCenter = glm::vec3(
+            (skinnedMin.x + skinnedMax.x) * 0.5f,
+            skinnedMin.y,
+            (skinnedMin.z + skinnedMax.z) * 0.5f
+        );
+
+        for (auto& v : gpuVertices) {
+            v.position = (v.position - normalizationCenter) / normalizationScale;
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, gpuVertices.size() * sizeof(VertexGpu), gpuVertices.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    else {
+        normalizationCenter = glm::vec3(
+            (boundsMin.x + boundsMax.x) * 0.5f,
+            boundsMin.y,
+            (boundsMin.z + boundsMax.z) * 0.5f
+        );
+        normalizationScale = largestDimension;
+        for (size_t i = 0; i < sourceVertices.size(); ++i) {
+            glm::vec3 worldPos = glm::vec3(worldTransform * glm::vec4(sourceVertices[i].position, 1.0f));
+            gpuVertices[i].position = (worldPos - normalizationCenter) / normalizationScale;
+            gpuVertices[i].normal = glm::normalize(worldNormalMatrix * sourceVertices[i].normal);
+            gpuVertices[i].color = sourceVertices[i].color;
+            gpuVertices[i].texCoords = sourceVertices[i].texCoords;
+        }
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, gpuVertices.size() * sizeof(VertexGpu), gpuVertices.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, position)));
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, normal)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, color)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VertexGpu), reinterpret_cast<void*>(offsetof(VertexGpu, texCoords)));
+        glEnableVertexAttribArray(3);
+        glBindVertexArray(0);
+    }
+
     std::cout << "Loaded Blender model: " << filePath
         << " (" << scene->mNumMeshes << " meshes"
         << (animated ? ", animated clips: " + std::to_string(animations.size()) : "")
         << ")" << std::endl;
+    for (size_t i = 0; i < animations.size(); ++i) {
+        std::cout << "  Animation[" << i << "]: \"" << animations[i].name
+            << "\" duration=" << animations[i].duration << std::endl;
+    }
     return true;
 }
 
@@ -440,6 +510,13 @@ bool ImportedModel::playAnimationByName(const std::string& keyword)
         }
     }
     return false;
+}
+
+void ImportedModel::resetAnimationPose()
+{
+    if (!animated || animations.empty()) return;
+    animationTimeSeconds = 0.0f;
+    updateAnimation(0.0f);
 }
 
 void ImportedModel::updateAnimation(float deltaSeconds)
@@ -519,7 +596,7 @@ void ImportedModel::updateAnimation(float deltaSeconds)
         glm::mat4 globalTransform = parentTransform * localTransform;
         int boneIndex = findBone(node.name);
         if (boneIndex >= 0) {
-            bones[boneIndex].finalTransform = rootInverse * globalTransform * bones[boneIndex].offset;
+            bones[boneIndex].finalTransform = globalTransform * bones[boneIndex].offset;
         }
 
         for (int childIndex : node.children) {
@@ -549,8 +626,8 @@ void ImportedModel::updateAnimation(float deltaSeconds)
         }
 
         if (totalWeight <= 0.0001f) {
-            skinnedPosition = glm::vec4(source.position, 1.0f);
-            skinnedNormal = source.normal;
+            skinnedPosition = worldTransform * glm::vec4(source.position, 1.0f);
+            skinnedNormal = worldNormalMatrix * source.normal;
         }
 
         gpuVertices[vertexIndex].position = (glm::vec3(skinnedPosition) - normalizationCenter) / normalizationScale;
