@@ -114,6 +114,7 @@ void setupStageOne(CombatSystem& combatSystem) {
 
 int main()
 {
+  
     if (!glfwInit()) return -1;
     srand((unsigned int)time(NULL));
 

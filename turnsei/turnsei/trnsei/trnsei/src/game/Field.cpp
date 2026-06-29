@@ -103,21 +103,21 @@ void main()
 }
 )";
         const char* fragmentSource = R"(
-#version 330 core
-uniform vec3 actorColor;
-uniform vec3 lightDir;
-uniform vec3 cameraPos;
-uniform int outlineMode;
-uniform int useVertexColor;
-uniform int useTexture;
-uniform float opacity;
-uniform sampler2D diffuseTexture;
-in vec3 vNormal;
-in vec3 vWorldPos;
-in vec3 vColor;
-in vec2 vTexCoords;
-out vec4 FragColor;
-void main()
+        #version 330 core
+        uniform vec3 actorColor;
+        uniform vec3 lightDir;
+        uniform vec3 cameraPos;
+        uniform int outlineMode;
+        uniform int useVertexColor;
+        uniform int useTexture;
+        uniform float opacity;
+        uniform sampler2D diffuseTexture;
+        in vec3 vNormal;
+        in vec3 vWorldPos;
+        in vec3 vColor;
+        in vec2 vTexCoords;
+        out vec4 FragColor;
+        void main()
 {
     if (outlineMode == 1) {
         FragColor = vec4(0.020, 0.024, 0.038, opacity);
