@@ -89,6 +89,14 @@ namespace
         dl->AddLine({(float)width*0.18f, cy}, {(float)width*0.82f, cy}, IM_COL32(255,214,124,(int)lineAlpha), 2.0f);
     }
 
+    bool AllFieldEnemiesDefeated()
+    {
+        for (int i = 0; i < MAX_FIELD_ENEMIES; ++i) {
+            if (fieldEnemies[i].active) return false;
+        }
+        return true;
+    }
+
     bool StartEncounterIfNeeded(CombatSystem& cs)
     {
         if (encounterTransitionActive) return false;
@@ -127,6 +135,11 @@ void FieldUpdate(CombatSystem& combatSystem)
     float currentTime = (float)glfwGetTime();
     deltaTime = previousFrameTime > 0.0f ? currentTime - previousFrameTime : 0.0f;
     previousFrameTime = currentTime;
+
+    if (combatSystem.consumeBattleVictory() && AllFieldEnemiesDefeated()) {
+        currentScene = Scene::Result;
+        return;
+    }
 
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -172,15 +185,17 @@ void FieldUpdate(CombatSystem& combatSystem)
     DrawSimpleMap(view, proj, camPos);
 
     bool moving = player.isMoving();
+    bool hasPlayerWalkClip = false;
     bool advancePlayerModelAnimation = false;
     if (moving) {
-        if (!playerModel.playAnimationByName("walk") &&
-            !playerModel.playAnimationByName("run") &&
-            !playerModel.playAnimationByName("locomotion") &&
-            !playerModel.playAnimationByName("mixamo") &&
-            !playerModel.playAnimationByName("take"))
-            playerModel.playAnimationByIndex(0);
-        advancePlayerModelAnimation = true;
+        hasPlayerWalkClip =
+            playerModel.playAnimationByName("walk") ||
+            playerModel.playAnimationByName("run") ||
+            playerModel.playAnimationByName("locomotion") ||
+            playerModel.playAnimationByName("move") ||
+            playerModel.playAnimationByName("mixamo") ||
+            playerModel.playAnimationByName("take");
+        advancePlayerModelAnimation = hasPlayerWalkClip;
     }
     else {
         if (playerModel.playAnimationByName("idle") ||
@@ -191,7 +206,7 @@ void FieldUpdate(CombatSystem& combatSystem)
             playerModel.resetAnimationPose();
         }
     }
-    UpdateWalkAnimation(playerWalkAnim, deltaTime, moving && !playerModel.hasAnimation());
+    UpdateWalkAnimation(playerWalkAnim, deltaTime, moving && !hasPlayerWalkClip);
     if (advancePlayerModelAnimation) {
         playerModel.updateAnimation(deltaTime);
     }
@@ -211,7 +226,7 @@ void FieldUpdate(CombatSystem& combatSystem)
     DrawEncounterOverlay(fbW, fbH, encProgress);
     if (encounterTransitionActive && encounterTransitionTime >= encounterTransitionDuration) {
         encounterTransitionActive = false;
-       // combatSystem.resetBattle();
+        combatSystem.resetBattle();
         currentScene = Scene::Battle;
     }
 }

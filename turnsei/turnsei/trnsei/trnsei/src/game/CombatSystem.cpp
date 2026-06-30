@@ -4,6 +4,7 @@
 
 #include "Character.h"
 #include "CombatSystem.h"
+#include "Scene.h"
 #include "../../assets/ImportedModel.h"
 
 #include <algorithm>
@@ -53,6 +54,22 @@ void CombatSystem::renderUI(int screenWidth, int screenHeight)
     checkBattleState();
 
     Character* activeChar = getActiveCharacter();
+    if (battleState != BattleState::InProgress) {
+        if (!battleEndQueued) {
+            battleEndQueued = true;
+            battleEndStartTime = ImGui::GetTime();
+            battleEndResult = battleState;
+            pendingCommand = BattleCommand::None;
+            enemyActionQueued = false;
+        }
+
+        renderBattleScene(activeChar, screenWidth, screenHeight);
+        renderBattleEndOverlay(screenWidth, screenHeight);
+        if (ImGui::GetTime() - battleEndStartTime >= 2.4) {
+            returnToFieldAfterBattle();
+        }
+        return;
+    }
     if (markedTarget && markedTarget->currentHp <= 0) markedTarget = nullptr;
     if (!activeChar || battleState != BattleState::InProgress) {
         pendingCommand = BattleCommand::None;
@@ -182,7 +199,14 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
     if (target->currentHp <= 0 && markedTarget == target) markedTarget = nullptr;
 }
 
-/*void CombatSystem::resetBattle()
+bool CombatSystem::consumeBattleVictory()
+{
+    bool won = lastBattleVictory;
+    lastBattleVictory = false;
+    return won;
+}
+
+void CombatSystem::resetBattle()
 {
     for (auto it = participants.begin(); it != participants.end(); ) {
         if (*it && (*it)->isAlly == 0) {
@@ -222,13 +246,53 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
     battleState = BattleState::InProgress;
     enemyActionQueued = false;
     enemyActionTime = 0.0;
+    battleEndQueued = false;
+    battleEndStartTime = 0.0;
+    battleEndResult = BattleState::InProgress;
+    lastBattleVictory = false;
     pendingCommand = BattleCommand::None;
     markedTarget = nullptr;
     damagePopups.clear();
     battleLog.clear();
     addLog("Battle start");
     sortTurnOrder();
-}*/
+}
+
+void CombatSystem::returnToFieldAfterBattle()
+{
+    bool won = battleEndResult == BattleState::Victory;
+
+    for (auto it = participants.begin(); it != participants.end(); ) {
+        if (*it && (*it)->isAlly == 0) {
+            delete *it;
+            it = participants.erase(it);
+        }
+        else {
+            if (*it) {
+                (*it)->currentHp = (*it)->hp;
+                (*it)->isGuarding = false;
+                (*it)->turnGauge = (*it)->speed;
+                (*it)->charge = 0;
+                (*it)->energy = 0;
+            }
+            ++it;
+        }
+    }
+
+    battleState = BattleState::InProgress;
+    enemyActionQueued = false;
+    enemyActionTime = 0.0;
+    battleEndQueued = false;
+    battleEndStartTime = 0.0;
+    battleEndResult = BattleState::InProgress;
+    lastBattleVictory = won;
+    pendingCommand = BattleCommand::None;
+    markedTarget = nullptr;
+    damagePopups.clear();
+    battleLog.clear();
+    currentPoints = 0;
+    currentScene = Scene::Field;
+}
 
 //s“®‡‚ğŠÇ—‚·‚éŠÖ”
 void CombatSystem::sortTurnOrder()

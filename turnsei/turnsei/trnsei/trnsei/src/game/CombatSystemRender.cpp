@@ -402,7 +402,7 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
                 : glm::vec3(0.18f, 0.55f, 0.88f);
         }
         else {
-            float spacing = 2.15f;
+            float spacing = 3.0f;
             float x = (enemyIndex - (enemyCount - 1) * 0.5f) * spacing;
             float depth = -3.75f + std::abs(enemyIndex - (enemyCount - 1) * 0.5f) * 0.18f;
             position = glm::vec3(x + 1.25f, 0.0f, depth);
@@ -546,13 +546,6 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         );
         drawList->AddRect(barMin, barMax, IM_COL32(255, 255, 255, 180), 3.0f);
 
-        std::string hpText = enemy->name + "  " + std::to_string(enemy->currentHp) + "/" + std::to_string(enemy->hp);
-        ImVec2 textSize = ImGui::CalcTextSize(hpText.c_str());
-        drawList->AddText(
-            ImVec2(head.x - textSize.x * 0.5f, barMin.y - textSize.y - 3.0f),
-            IM_COL32(255, 255, 255, 255),
-            hpText.c_str()
-        );
     }
 
     double now = ImGui::GetTime();
@@ -598,6 +591,37 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         popupDrawList->AddText(font, fontSize, ImVec2(pos.x - 1.0f, pos.y), shadowColor, text.c_str());
         popupDrawList->AddText(font, fontSize, pos, fillColor, text.c_str());
     }
+}
+
+void CombatSystem::renderBattleEndOverlay(int screenWidth, int screenHeight)
+{
+    double elapsed = battleEndQueued ? ImGui::GetTime() - battleEndStartTime : 0.0;
+    float intro = std::max(0.0f, std::min(static_cast<float>(elapsed / 0.35), 1.0f));
+    float fade = std::max(0.0f, std::min(static_cast<float>((elapsed - 1.05) / 1.15), 1.0f));
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    drawList->AddRectFilled(
+        ImVec2(0.0f, 0.0f),
+        ImVec2(static_cast<float>(screenWidth), static_cast<float>(screenHeight)),
+        IM_COL32(0, 0, 0, static_cast<int>(60 + fade * 195.0f))
+    );
+
+    const char* resultText = battleEndResult == BattleState::Victory ? "Victory" : "Defeat";
+    ImFont* font = ImGui::GetFont();
+    float fontSize = 72.0f;
+    ImVec2 textSize = font->CalcTextSizeA(fontSize, 10000.0f, 0.0f, resultText);
+    ImVec2 textPos(
+        (static_cast<float>(screenWidth) - textSize.x) * 0.5f,
+        static_cast<float>(screenHeight) * 0.42f - textSize.y * 0.5f
+    );
+    int textAlpha = static_cast<int>(255.0f * intro);
+    ImU32 shadowColor = IM_COL32(0, 0, 0, textAlpha);
+    ImU32 textColor = battleEndResult == BattleState::Victory
+        ? IM_COL32(120, 255, 150, textAlpha)
+        : IM_COL32(255, 115, 115, textAlpha);
+
+    drawList->AddText(font, fontSize, ImVec2(textPos.x + 4.0f, textPos.y + 4.0f), shadowColor, resultText);
+    drawList->AddText(font, fontSize, textPos, textColor, resultText);
 }
 
 void CombatSystem::renderBattleCards(Character* activeChar, float screenWidth, float marginX, float marginY, float cardWidth, float cardHeight, float spacingY)
