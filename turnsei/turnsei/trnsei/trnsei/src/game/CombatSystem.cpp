@@ -159,7 +159,7 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
 
     int originalPower = attacker->power;
     if (command == BattleCommand::Skill) {
-        attacker->power += 8;
+        attacker->power += 10;
         attacker->charge -= 2;
     }
     if (command == BattleCommand::Ultimate) {
@@ -181,7 +181,8 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
     attacker->power = originalPower;
     if (target->currentHp <= 0 && markedTarget == target) markedTarget = nullptr;
 }
-void CombatSystem::resetBattle()
+
+/*void CombatSystem::resetBattle()
 {
     for (auto it = participants.begin(); it != participants.end(); ) {
         if (*it && (*it)->isAlly == 0) {
@@ -194,10 +195,10 @@ void CombatSystem::resetBattle()
     }
 
     const char* enemyNames[] = { "Enemy A", "Enemy B", "Enemy C" };
-    int enemyHp[]      = { 90, 100, 85 };
-    int enemyPower[]    = { 18, 20, 22 };
-    int enemyDefense[]  = { 8, 10, 7 };
-    int enemySpeed[]    = { 10, 12, 14 };
+    int enemyHp[]      = { 80 + rand() % 10,80 + rand() % 10,80 +  rand() % 10};
+    int enemyPower[]    = { 1 + rand() % 10, 1 + rand() % 10, 1 + rand() % 10};
+    int enemyDefense[]  = { 2, 6, 7 };
+    int enemySpeed[]    = { 8, 12, 14 };
     int enemyCrit[]     = { 5, 8, 10 };
     int enemyCritDmg[]  = { 130, 140, 145 };
 
@@ -227,8 +228,9 @@ void CombatSystem::resetBattle()
     battleLog.clear();
     addLog("Battle start");
     sortTurnOrder();
-}
+}*/
 
+//s“®‡‚ğŠÇ—‚·‚éŠÖ”
 void CombatSystem::sortTurnOrder()
 {
     std::sort(participants.begin(), participants.end(), [](Character* a, Character* b) {

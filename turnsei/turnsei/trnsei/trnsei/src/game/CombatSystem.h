@@ -1,5 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_NONE
+#include <imgui.h>
+#include <functional>
 #include <GLFW/glfw3.h>
 #include <string>
 #include <vector>
@@ -32,9 +34,12 @@ public:
     void addParticipant(Character* character);
     void executeSkill(Character* attacker, Character* target);
     void executeGuard(Character* character);
-    void resetBattle();
+    //void resetBattle();
+    void DrawStyledButton(const char* label, const char* desc, ImVec4 color, float width, float height, std::function<void()> onClick);
 
 private:
+    int currentPoints = 0;
+    int maxPoints = 3;
     bool enemyActionQueued = false;
     double enemyActionTime = 0.0;
     bool isBattleLogOpen = false;
@@ -58,6 +63,7 @@ private:
     void renderBattleScene(Character* activeChar, int screenWidth, int screenHeight);
     void renderBattleCards(Character* activeChar, float screenWidth, float marginX, float marginY, float cardWidth, float cardHeight, float spacingY);
     void renderActionMenu(Character* activeChar, int screenWidth, int screenHeight);
+   
     void renderBattleLogWindow(int screenWidth, int screenHeight);
     void chooseCommand(BattleCommand command);
     void executeCommand(Character* attacker, Character* target);

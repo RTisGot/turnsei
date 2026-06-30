@@ -15,16 +15,22 @@
 const unsigned int SCR_Width = 1280, SCR_Height = 720;
 
 GLFWwindow* window = nullptr;
-
+/**
+ * @brief ウィンドウモードとフルスクリーンを切り替えるトグル処理
+ * OS固有のウィンドウ配置情報を保持し、切り替え時に復元させる設計。
+ */
 static void UpdateFullscreenToggle(GLFWwindow* targetWindow)
 {
     static bool keyWasDown = false;
     static bool fullscreen = false;
+
+    //windowの位置と配置の保存
     static int windowedX = 100;
     static int windowedY = 100;
     static int windowedWidth = SCR_Width;
     static int windowedHeight = SCR_Height;
 
+    //
     bool toggleKeyDown =
         glfwGetKey(targetWindow, GLFW_KEY_F11) == GLFW_PRESS ||
         (glfwGetKey(targetWindow, GLFW_KEY_LEFT_ALT) == GLFW_PRESS &&
@@ -33,7 +39,9 @@ static void UpdateFullscreenToggle(GLFWwindow* targetWindow)
     if (toggleKeyDown && !keyWasDown) {
         fullscreen = !fullscreen;
 
+        // 現在のウィンドウ位置とサイズを保存
         if (fullscreen) {
+            //
             glfwGetWindowPos(targetWindow, &windowedX, &windowedY);
             glfwGetWindowSize(targetWindow, &windowedWidth, &windowedHeight);
 
@@ -67,6 +75,9 @@ static void UpdateFullscreenToggle(GLFWwindow* targetWindow)
     keyWasDown = toggleKeyDown;
 }
 
+/**
+ * @brief 日本語フォントをロードする関数
+ */
 static void LoadJapaneseFont(ImGuiIO& io)
 {
     ImFontConfig cfg;
@@ -91,10 +102,11 @@ static void LoadJapaneseFont(ImGuiIO& io)
     io.Fonts->AddFontDefault();
 }
 
+//
 void setupStageOne(CombatSystem& combatSystem) {
     Character* player = new Character{ "Player", 120, 25, 12, 15, 10, 150, 120, 1 };
     combatSystem.addParticipant(player);
-    combatSystem.resetBattle();
+    //combatSystem.resetBattle();
     combatSystem.displayTurnOrder();
 }
 

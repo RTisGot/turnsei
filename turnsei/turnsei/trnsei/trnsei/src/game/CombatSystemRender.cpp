@@ -40,13 +40,17 @@ namespace
         return file.good();
     }
 
+
+    //敵model読み込み用
     void LoadBattleEnemyModels()
     {
         if (g_enemyModelLoadAttempted) return;
         g_enemyModelLoadAttempted = true;
 
+        //パス探索
         const char* extensions[] = { ".fbx", ".obj", ".gltf", ".glb" };
         const char* roots[] = { "Resource/", "../trnsei/Resource/" };
+        const char* names[] = { "Enemy" };
 
         for (int modelIndex = 0; modelIndex < 5; ++modelIndex) {
             std::string numberedName = "Enemy" + std::to_string(modelIndex + 1);
@@ -72,6 +76,7 @@ namespace
         }
     }
 
+    //キャラクターモデル読み込み用
     void LoadBattlePlayerModel()
     {
         if (g_playerModelLoadAttempted) return;
@@ -79,7 +84,7 @@ namespace
 
         const char* extensions[] = { ".fbx", ".obj", ".gltf", ".glb" };
         const char* roots[] = { "Resource/", "../trnsei/Resource/" };
-        const char* names[] = { "Character", "Player", "Hero" };
+        const char* names[] = { "Character" };
 
         for (const char* root : roots) {
             for (const char* name : names) {
@@ -99,6 +104,7 @@ namespace
         glCompileShader(shader);
         return shader;
     }
+
 
     void InitBattleRenderer()
     {
@@ -202,9 +208,11 @@ void main()
     shaded += vec3(1.00, 0.92, 0.70) * spec * 0.58;
     shaded += vec3(0.90, 0.96, 1.00) * glint * 0.22;
     float depthFog = smoothstep(8.0, 24.0, length(cameraPos - vWorldPos));
+    float minlight =0.4;
     shaded = mix(shaded, vec3(0.055, 0.075, 0.12), depthFog * 0.18);
     shaded = mix(vec3(dot(shaded, vec3(0.299, 0.587, 0.114))), shaded, 1.20);
     shaded = pow(max(shaded, vec3(0.0)), vec3(0.96));
+    shaded = max(shaded, baseColor * minlight);
     FragColor = vec4(shaded, opacity);
 }
 )";
@@ -413,7 +421,7 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         glUniform3fv(glGetUniformLocation(g_battleShader, "color"), 1, glm::value_ptr(color));
 
         glm::mat4 shadowModel(1.0f);
-        shadowModel = glm::translate(shadowModel, glm::vec3(position.x, 0.0f, position.z));
+        shadowModel = glm::translate(shadowModel, glm::vec3(position.x, position.y, position.z));
         shadowModel = glm::scale(shadowModel, glm::vec3(scale.x * 0.56f, 1.0f, scale.z * 0.42f));
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -647,16 +655,20 @@ void CombatSystem::renderBattleCards(Character* activeChar, float screenWidth, f
     }
 }
 
+//actionメニュー用の関数
 void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int screenHeight)
 {
     ImGuiWindowFlags hudFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | 
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar|
+        ImGuiWindowFlags_NoDecoration;
 
-    ImGui::SetNextWindowPos(ImVec2(18.0f, (float)screenHeight - 172.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(310.0f, 150.0f), ImGuiCond_Always);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.055f, 0.075f, 0.90f));
+    ImGui::SetNextWindowPos(ImVec2(18.0f, (float)screenHeight - 100.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(310.0f, 300.0f), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
     if (ImGui::Begin("##PartyHud", nullptr, hudFlags)) {
         for (auto* c : participants) {
             if (!c || c->isAlly != 1) continue;
@@ -677,11 +689,11 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor();
 
-    ImGui::SetNextWindowPos(ImVec2((float)screenWidth - 118.0f, 18.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(100.0f, 48.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2((float)screenWidth -110.f, 30.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(80.0f, 60.0f), ImGuiCond_Always);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.055f, 0.075f, 0.84f));
     if (ImGui::Begin("##LogButton", nullptr, hudFlags)) {
-        if (ImGui::Button(isBattleLogOpen ? "Close" : "Log", ImVec2(-1.0f, 28.0f))) {
+        if (ImGui::Button(isBattleLogOpen ? "Close" : "Log", ImVec2(-1.0f, 40.0f))) {
             isBattleLogOpen = !isBattleLogOpen;
         }
     }
@@ -690,51 +702,79 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
 
     float commandWidth = std::min(520.0f, (float)screenWidth * 0.48f);
     ImGui::SetNextWindowPos(
-        ImVec2((float)screenWidth - commandWidth - 22.0f, (float)screenHeight - 158.0f),
+        ImVec2((float)screenWidth - commandWidth - 22.0f, (float)screenHeight - 220.0f),
         ImGuiCond_Always
     );
-    ImGui::SetNextWindowSize(ImVec2(commandWidth, 136.0f), ImGuiCond_Always);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.055f, 0.075f, 0.92f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.72f, 0.62f, 0.32f, 0.60f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
+    ImGui::SetNextWindowSize(ImVec2(commandWidth, 400.0f), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     if (ImGui::Begin("##CommandHud", nullptr, hudFlags)) {
         if (battleState != BattleState::InProgress) {
             ImGui::TextColored(
                 battleState == BattleState::Victory ? ImVec4(0.4f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                 battleState == BattleState::Victory ? "Victory" : "Defeat"
             );
-            if (ImGui::Button("Retry", ImVec2(160, 42))) {
-                resetBattle();
+            if (ImGui::Button("mapへ戻る", ImVec2(160, 42))) {
+               
             }
         }
-        else if (activeChar && activeChar->isAlly == 1) {
-            ImGui::TextColored(ImVec4(0.95f, 0.82f, 0.42f, 1.0f), "%s", activeChar->name.c_str());
-            ImGui::SameLine();
-            ImGui::TextDisabled(markedTarget ? "Target: %s" : "Target: Random", markedTarget ? markedTarget->name.c_str() : "");
-            ImGui::Separator();
 
-            float buttonWidth = (commandWidth - 48.0f) / 3.0f;
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.24f, 0.30f, 1.0f));
-            if (ImGui::Button("Basic\nAttack", ImVec2(buttonWidth, 62.0f))) {
-                chooseCommand(BattleCommand::BasicAttack);
-                executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-            }
-            ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.42f, 0.58f, 1.0f));
-            if (ImGui::Button("Combat\nSkill", ImVec2(buttonWidth, 62.0f))) {
-                chooseCommand(BattleCommand::Skill);
-                executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-            }
+        //playerのターンのUI
+        else if (activeChar && activeChar->isAlly == 1) {
+            ImGui::Text("Action Points: %d / %d", currentPoints, maxPoints);
+            float pointsFraction = (float)currentPoints / (float)maxPoints;
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.7f, 0.1f, 1.0f));
+            ImGui::ProgressBar(pointsFraction, ImVec2(-1.0f, 6.0f), "");
             ImGui::PopStyleColor();
+            ImGui::Spacing();
+
+            float fullWidth = commandWidth - 32.0f;
+            float btnHeight = 65.0f; // 少し高さを抑えて全体を収める
+            float centerX = (commandWidth - fullWidth) / 2.0f;
+
+            // --- 1. Ultimate (MAXポイントで発動可能) ---
+            bool canUseUltimate = (currentPoints >= maxPoints);
+            if (!canUseUltimate) ImGui::BeginDisabled();
+
+            ImGui::SetCursorPosX(centerX);
+            DrawStyledButton("Ultimate", "Use all points to unleash Ultimate!",
+                ImVec4(0.62f, 0.42f, 0.12f, 1.0f), fullWidth, btnHeight, [&]() {
+                    currentPoints = 0; // ポイント全消費
+                    chooseCommand(BattleCommand::Ultimate);
+                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
+                });
+
+            if (!canUseUltimate) ImGui::EndDisabled();
+
+            ImGui::Spacing();
+
+            // 
+            float halfWidth = (fullWidth - 8.0f) / 2.0f;
+            ImGui::SetCursorPosX(centerX);
+
+            // Basic Attack 
+            DrawStyledButton("Basic\nAttack", "Deals physical damage",
+                ImVec4(0.18f, 0.24f, 0.30f, 1.0f), halfWidth, btnHeight, [&]() {
+                    currentPoints = std::min(maxPoints, currentPoints + 1); // 溜まる
+                    chooseCommand(BattleCommand::BasicAttack);
+                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
+                });
+
             ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.62f, 0.42f, 0.12f, 1.0f));
-            if (ImGui::Button("Ultimate", ImVec2(buttonWidth, 62.0f))) {
-                chooseCommand(BattleCommand::Ultimate);
-                executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-            }
-            ImGui::PopStyleColor(2);
-            ImGui::PopStyleVar();
+
+            // Combat Skill (ポイントを1消費)
+            bool canUseSkill = (currentPoints >= 1);
+            if (!canUseSkill) ImGui::BeginDisabled();
+
+            DrawStyledButton("Skill ", "Uses 1 AP to attack",
+                ImVec4(0.12f, 0.42f, 0.58f, 1.0f), halfWidth, btnHeight, [&]() {
+                    currentPoints = std::max(0, currentPoints - 1); // 消費
+                    chooseCommand(BattleCommand::Skill);
+                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
+                });
+
+            if (!canUseSkill) ImGui::EndDisabled();
         }
         else if (activeChar) {
             ImGui::TextColored(ImVec4(0.95f, 0.38f, 0.34f, 1.0f), "%s", activeChar->name.c_str());
@@ -756,12 +796,24 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
     ImGui::PopStyleColor(2);
 }
 
+//ボタンのスタイルを変える関数
+void CombatSystem::DrawStyledButton(const char* label, const char* desc, ImVec4 color, float width, float height, std::function<void()> onClick) {
+    ImVec4 hoveredColor = ImVec4(color.x + 0.1f, color.y + 0.1f, color.z + 0.1f, 1.0f);
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hoveredColor);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+    if (ImGui::Button(label, ImVec2(width, height))) onClick();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", desc);
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+}
+
 void CombatSystem::renderBattleLogWindow(int screenWidth, int screenHeight)
 {
     if (!isBattleLogOpen) return;
 
-    ImGui::SetNextWindowPos(ImVec2(20.f, 80.f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(420.f, 220.f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(950.f, 80.f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(300.f, 220.f), ImGuiCond_Always);
     if (ImGui::Begin("Battle Log", &isBattleLogOpen, ImGuiWindowFlags_NoResize)) {
         for (const auto& line : battleLog) {
             ImGui::BulletText("%s", line.c_str());

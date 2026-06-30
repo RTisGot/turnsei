@@ -211,7 +211,7 @@ void FieldUpdate(CombatSystem& combatSystem)
     DrawEncounterOverlay(fbW, fbH, encProgress);
     if (encounterTransitionActive && encounterTransitionTime >= encounterTransitionDuration) {
         encounterTransitionActive = false;
-        combatSystem.resetBattle();
+       // combatSystem.resetBattle();
         currentScene = Scene::Battle;
     }
 }
