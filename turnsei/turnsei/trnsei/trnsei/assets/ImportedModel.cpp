@@ -489,6 +489,67 @@ bool ImportedModel::load(const std::string& filePath)
     return true;
 }
 
+bool ImportedModel::loadAnimationsFrom(const std::string& filePath, const std::string& clipName)
+{
+    if (bones.empty()) {
+        std::cerr << "loadAnimationsFrom: base model has no bones, load mesh first\n";
+        return false;
+    }
+
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(
+        filePath,
+        aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
+    );
+    if (!scene || scene->mNumAnimations == 0) {
+        std::cerr << "loadAnimationsFrom: no animations in " << filePath << std::endl;
+        return false;
+    }
+
+    int added = 0;
+    for (unsigned int ai = 0; ai < scene->mNumAnimations; ++ai) {
+        const aiAnimation* a = scene->mAnimations[ai];
+        if (!a) continue;
+
+        AnimationClip clip{};
+        // clipNameが指定されていればその名前を使う、なければファイル名から生成
+        if (!clipName.empty()) {
+            clip.name = ai == 0 ? clipName : clipName + std::to_string(ai);
+        } else {
+            clip.name = a->mName.length > 0 ? a->mName.C_Str()
+                                             : "Anim_" + std::to_string(animations.size() + ai);
+        }
+        clip.duration = a->mDuration;
+        clip.ticksPerSecond = a->mTicksPerSecond > 0.0 ? a->mTicksPerSecond : 25.0;
+
+        for (unsigned int ci = 0; ci < a->mNumChannels; ++ci) {
+            const aiNodeAnim* ch = a->mChannels[ci];
+            Channel channel{};
+            channel.nodeName = ch->mNodeName.C_Str();
+            for (unsigned int i = 0; i < ch->mNumPositionKeys; ++i) {
+                const aiVectorKey& k = ch->mPositionKeys[i];
+                channel.positions.push_back({ k.mTime, glm::vec3(k.mValue.x, k.mValue.y, k.mValue.z) });
+            }
+            for (unsigned int i = 0; i < ch->mNumRotationKeys; ++i) {
+                const aiQuatKey& k = ch->mRotationKeys[i];
+                channel.rotations.push_back({ k.mTime, glm::quat(k.mValue.w, k.mValue.x, k.mValue.y, k.mValue.z) });
+            }
+            for (unsigned int i = 0; i < ch->mNumScalingKeys; ++i) {
+                const aiVectorKey& k = ch->mScalingKeys[i];
+                channel.scales.push_back({ k.mTime, glm::vec3(k.mValue.x, k.mValue.y, k.mValue.z) });
+            }
+            clip.channels.push_back(channel);
+        }
+        animations.push_back(clip);
+        ++added;
+        std::cout << "  Loaded animation \"" << clip.name << "\" from " << filePath
+                  << " (duration=" << clip.duration << ")\n";
+    }
+
+    animated = !animations.empty() && !bones.empty();
+    return added > 0;
+}
+
 bool ImportedModel::playAnimationByIndex(size_t index)
 {
     if (!animated || index >= animations.size()) return false;
@@ -499,13 +560,37 @@ bool ImportedModel::playAnimationByIndex(size_t index)
     return true;
 }
 
+std::string ImportedModel::getAnimationName(size_t index) const
+{
+    if (index >= animations.size()) return "";
+    return animations[index].name;
+}
+
+int ImportedModel::findAnimationByKeywords(const std::vector<std::string>& keywords) const
+{
+    if (!animated) return -1;
+    for (const auto& kw : keywords) {
+        std::string lowKw;
+        for (char c : kw) lowKw += (char)std::tolower((unsigned char)c);
+        for (size_t i = 0; i < animations.size(); ++i) {
+            std::string lowName;
+            for (char c : animations[i].name) lowName += (char)std::tolower((unsigned char)c);
+            if (lowName.find(lowKw) != std::string::npos) return (int)i;
+        }
+    }
+    return -1;
+}
+
 bool ImportedModel::playAnimationByName(const std::string& keyword)
 {
     if (!animated || keyword.empty()) return false;
 
-    std::string loweredKeyword = ToLowerCopy(keyword);
+    std::string loweredKeyword;
+    for (char c : keyword) loweredKeyword += (char)std::tolower((unsigned char)c);
     for (size_t i = 0; i < animations.size(); ++i) {
-        if (ToLowerCopy(animations[i].name).find(loweredKeyword) != std::string::npos) {
+        std::string lowName;
+        for (char c : animations[i].name) lowName += (char)std::tolower((unsigned char)c);
+        if (lowName.find(loweredKeyword) != std::string::npos) {
             return playAnimationByIndex(i);
         }
     }

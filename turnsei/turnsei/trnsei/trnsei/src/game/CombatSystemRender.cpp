@@ -2,17 +2,22 @@
 #include <GLFW/glfw3.h>
 #include "imgui.h"
 
+#include "AIDialogue.h"
 #include "Character.h"
 #include "CombatSystem.h"
+#include "Field.h"
+#include "SimpleMap.h"
 #include "../../assets/ImportedModel.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <fstream>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -334,6 +339,42 @@ void main()
         const float c3 = c1 + 1.0f;
         return 1.0f + c3 * std::pow(value - 1.0f, 3.0f) + c1 * std::pow(value - 1.0f, 2.0f);
     }
+
+    // ── AI会話ダイアログの状態 ─────────────────────────────────────
+    struct AIDialogueState {
+        bool isOpen = false;
+        char inputBuf[512] = {};
+        std::string displayResponse;  // メインスレッドで表示する文字列
+        bool waiting = false;         // API呼び出し中フラグ
+        // スレッド間通信用
+        std::mutex mutex;
+        std::string pendingResponse;
+        std::atomic<bool> hasNewResponse{ false };
+    };
+    AIDialogueState g_aiDlg;
+
+    // バトル状態からDialogueContextを構築するヘルパー
+    DialogueContext BuildDialogueContext(const std::vector<Character*>& participants, int turnNumber, bool isPlayerTurn)
+    {
+        DialogueContext ctx;
+        ctx.inBattle = true;
+        ctx.turnNumber = turnNumber;
+        ctx.isPlayerTurn = isPlayerTurn;
+
+        for (auto* c : participants) {
+            if (!c) continue;
+            if (c->isAlly == 1) {
+                ctx.playerHp    = c->currentHp;
+                ctx.playerMaxHp = c->hp;
+            } else if (c->currentHp > 0) {
+                ctx.enemyHp    = c->currentHp;
+                ctx.enemyMaxHp = c->hp;
+                ctx.enemyName  = c->name;
+            }
+        }
+        return ctx;
+    }
+    // ─────────────────────────────────────────────────────────────
 }
 
 void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int screenHeight)
@@ -360,8 +401,21 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
 
     glViewport(0, 0, screenWidth, screenHeight);
     glEnable(GL_DEPTH_TEST);
-    glClearColor(0.030f, 0.040f, 0.070f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // ── フィールドの3D背景を描画 ──────────────────────────────────
+    {
+        glm::vec3 worldOrigin = GetBattleWorldOrigin();
+        // バトルカメラと同じ相対オフセットでワールド空間に配置
+        glm::vec3 bgCamPos    = worldOrigin + glm::vec3(0.0f,  6.0f, 14.2f);
+        glm::vec3 bgCamTarget = worldOrigin + glm::vec3(0.0f,  1.55f,  0.2f);
+        glm::mat4 bgView = glm::lookAt(bgCamPos, bgCamTarget, glm::vec3(0,1,0));
+        DrawSimpleMap(bgView, projection, bgCamPos);
+        // 深度だけクリアしてバトルキャラを手前に描画できるようにする
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
+    // ─────────────────────────────────────────────────────────────
+
     glUseProgram(g_battleShader);
     glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -371,12 +425,6 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
     glUniform1i(glGetUniformLocation(g_battleShader, "useVertexColor"), 0);
     glUniform1i(glGetUniformLocation(g_battleShader, "useTexture"), 0);
     glUniform1f(glGetUniformLocation(g_battleShader, "opacity"), 1.0f);
-
-    glm::mat4 floorModel(1.0f);
-    glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1, GL_FALSE, glm::value_ptr(floorModel));
-    glUniform3f(glGetUniformLocation(g_battleShader, "color"), 0.12f, 0.18f, 0.28f);
-    glBindVertexArray(g_battleFloorVao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     std::vector<std::pair<Character*, glm::vec3>> actorPositions;
     std::vector<std::pair<Character*, glm::vec3>> enemyPositions;
@@ -818,6 +866,127 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
     ImGui::End();
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
+
+    // ── Talk ボタン ───────────────────────────────────────────────
+    ImGui::SetNextWindowPos(ImVec2(18.0f, (float)screenHeight - 148.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(92.0f, 44.0f), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0,0,0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    if (ImGui::Begin("##TalkBtn", nullptr,
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground)) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.38f, 0.28f, 0.92f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.55f, 0.40f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+        if (ImGui::Button("Talk", ImVec2(86.0f, 36.0f)))
+            g_aiDlg.isOpen = !g_aiDlg.isOpen;
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(2);
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
+    // ── AI会話ウィンドウ ──────────────────────────────────────────
+    if (g_aiDlg.isOpen) {
+        // バックグラウンドスレッドからの応答を受け取る
+        if (g_aiDlg.hasNewResponse.load()) {
+            std::lock_guard<std::mutex> lock(g_aiDlg.mutex);
+            g_aiDlg.displayResponse = g_aiDlg.pendingResponse;
+            g_aiDlg.waiting = false;
+            g_aiDlg.hasNewResponse.store(false);
+        }
+
+        // 会話する味方キャラを探す
+        Character* talkTarget = nullptr;
+        for (auto* c : participants) {
+            if (c && c->isAlly == 1 && c->currentHp > 0) { talkTarget = c; break; }
+        }
+        CharacterPersonality persona = GetPersonalityForCharacter(
+            talkTarget ? talkTarget->name : "Hero");
+
+        float dlgW = std::min(480.0f, (float)screenWidth * 0.42f);
+        float dlgH = 280.0f;
+        ImGui::SetNextWindowPos(
+            ImVec2((float)screenWidth * 0.5f - dlgW * 0.5f, (float)screenHeight - dlgH - 28.0f),
+            ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(dlgW, dlgH), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg,  ImVec4(0.04f, 0.08f, 0.14f, 0.96f));
+        ImGui::PushStyleColor(ImGuiCol_Border,    ImVec4(0.30f, 0.55f, 0.80f, 0.70f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,  6.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,   ImVec2(12.0f, 10.0f));
+
+        bool dlgOpen = true;
+        if (ImGui::Begin("##AIDlg", &dlgOpen,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+
+            // ヘッダー
+            ImGui::TextColored(ImVec4(0.55f, 0.88f, 1.0f, 1.0f), "[ %s ]", persona.name.c_str());
+            ImGui::SameLine(dlgW - 56.0f);
+            if (ImGui::SmallButton("閉じる")) g_aiDlg.isOpen = false;
+            ImGui::Separator();
+
+            // 応答表示エリア
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.02f, 0.04f, 0.08f, 0.60f));
+            ImGui::BeginChild("##DlgResponse", ImVec2(0, 120.0f), true);
+            if (g_aiDlg.waiting) {
+                float t = (float)ImGui::GetTime();
+                int dots = ((int)(t * 2.5f)) % 4;
+                std::string waitStr = "考え中";
+                for (int i = 0; i < dots; ++i) waitStr += ".";
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", waitStr.c_str());
+            } else if (!g_aiDlg.displayResponse.empty()) {
+                ImGui::TextWrapped("%s", g_aiDlg.displayResponse.c_str());
+            } else {
+                ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.55f, 1.0f), "何か話しかけてみよう...");
+            }
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+
+            ImGui::Spacing();
+
+            // 入力フィールド
+            ImGui::SetNextItemWidth(dlgW - 110.0f);
+            bool enterPressed = ImGui::InputText("##DlgInput", g_aiDlg.inputBuf, sizeof(g_aiDlg.inputBuf),
+                ImGuiInputTextFlags_EnterReturnsTrue);
+            ImGui::SameLine();
+
+            bool canSend = !g_aiDlg.waiting && g_aiDlg.inputBuf[0] != '\0';
+            if (!canSend) ImGui::BeginDisabled();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.65f, 1.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            bool sendClicked = ImGui::Button("送信", ImVec2(70.0f, 0.0f));
+            ImGui::PopStyleVar();
+            ImGui::PopStyleColor();
+            if (!canSend) ImGui::EndDisabled();
+
+            if (canSend && (sendClicked || enterPressed)) {
+                std::string input = g_aiDlg.inputBuf;
+                g_aiDlg.inputBuf[0] = '\0';
+                g_aiDlg.waiting = true;
+                g_aiDlg.displayResponse.clear();
+
+                // ターン番号を推定
+                int turnNum = 1;
+                bool isPlayerTurn = activeChar && activeChar->isAlly == 1;
+                DialogueContext ctx = BuildDialogueContext(participants, turnNum, isPlayerTurn);
+
+                CallClaudeDialogueAsync(input, persona, ctx, [](const std::string& resp) {
+                    std::lock_guard<std::mutex> lock(g_aiDlg.mutex);
+                    g_aiDlg.pendingResponse = resp;
+                    g_aiDlg.hasNewResponse.store(true);
+                });
+            }
+        }
+        ImGui::End();
+        ImGui::PopStyleVar(3);
+        ImGui::PopStyleColor(2);
+
+        if (!dlgOpen) g_aiDlg.isOpen = false;
+    }
+    // ─────────────────────────────────────────────────────────────
 }
 
 //ボタンのスタイルを変える関数

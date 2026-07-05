@@ -45,6 +45,29 @@ namespace
     float Saturate(float v) { return std::max(0.0f, std::min(v, 1.0f)); }
     float SmoothStep(float v) { v = Saturate(v); return v * v * (3.0f - 2.0f * v); }
 
+    // アニメーションFBXの候補 {ファイル名パターン, クリップ名}
+    struct AnimFile { const char* pattern; const char* clipName; };
+    const AnimFile ANIM_FILES[] = {
+        { "Walk",       "walk"  },
+        { "walk",       "walk"  },
+        { "Run",        "run"   },
+        { "run",        "run"   },
+        { "Idle",       "idle"  },
+        { "idle",       "idle"  },
+        { "Stand",      "idle"  },
+        { "Locomotion", "walk"  },
+    };
+
+    void TryLoadAnimations(const std::string& root)
+    {
+        for (const auto& af : ANIM_FILES) {
+            std::string path = root + af.pattern + ".fbx";
+            if (FileExists(path)) {
+                playerModel.loadAnimationsFrom(path, af.clipName);
+            }
+        }
+    }
+
     void LoadPlayerModel()
     {
         if (playerModelLoadAttempted) return;
@@ -57,7 +80,13 @@ namespace
             for (const char* name : names)
                 for (const char* ext : exts) {
                     std::string path = std::string(root) + name + ext;
-                    if (FileExists(path) && playerModel.load(path)) return;
+                    if (FileExists(path) && playerModel.load(path)) {
+                        // アニメーションが含まれていなければ別FBXから補完
+                        if (!playerModel.hasAnimation()) {
+                            TryLoadAnimations(std::string(root));
+                        }
+                        return;
+                    }
                 }
     }
 
@@ -186,30 +215,38 @@ void FieldUpdate(CombatSystem& combatSystem)
 
     bool moving = player.isMoving();
     bool hasPlayerWalkClip = false;
-    bool advancePlayerModelAnimation = false;
-    if (moving) {
-        hasPlayerWalkClip =
-            playerModel.playAnimationByName("walk") ||
-            playerModel.playAnimationByName("run") ||
-            playerModel.playAnimationByName("locomotion") ||
-            playerModel.playAnimationByName("move") ||
-            playerModel.playAnimationByName("mixamo") ||
-            playerModel.playAnimationByName("take");
-        advancePlayerModelAnimation = hasPlayerWalkClip;
-    }
-    else {
-        if (playerModel.playAnimationByName("idle") ||
-            playerModel.playAnimationByName("stand")) {
-            advancePlayerModelAnimation = true;
+    if (playerModel.isLoaded() && playerModel.hasAnimation()) {
+        size_t clipCount = playerModel.getAnimationCount();
+        if (moving) {
+            // キーワードで歩きアニメを探す
+            int walkIdx = playerModel.findAnimationByKeywords({
+                "walk","run","locomotion","move","jog","sprint","forward","go"
+            });
+            if (walkIdx >= 0) {
+                playerModel.playAnimationByIndex((size_t)walkIdx);
+                hasPlayerWalkClip = true;
+            } else if (clipCount >= 2) {
+                // 2クリップ以上あれば2番目(インデックス1)が歩き想定
+                playerModel.playAnimationByIndex(1);
+                hasPlayerWalkClip = true;
+            } else {
+                // 1クリップのみ: それを使う
+                playerModel.playAnimationByIndex(0);
+                hasPlayerWalkClip = true;
+            }
+        } else {
+            // アイドルアニメを探す
+            int idleIdx = playerModel.findAnimationByKeywords({"idle","stand","rest","wait","pose"});
+            if (idleIdx >= 0) {
+                playerModel.playAnimationByIndex((size_t)idleIdx);
+            } else {
+                // アイドルが見つからなければ最初のクリップ(歩きと別々なら0=idle想定)
+                playerModel.playAnimationByIndex(0);
+            }
         }
-        else {
-            playerModel.resetAnimationPose();
-        }
-    }
-    UpdateWalkAnimation(playerWalkAnim, deltaTime, moving && !hasPlayerWalkClip);
-    if (advancePlayerModelAnimation) {
         playerModel.updateAnimation(deltaTime);
     }
+    UpdateWalkAnimation(playerWalkAnim, deltaTime, moving && !hasPlayerWalkClip);
 
     glm::vec3 pScale = playerModel.isLoaded() ? glm::vec3(2.9f,3.0f,2.9f) : glm::vec3(1.1f,2.4f,1.1f);
     glm::vec3 pColor = playerModel.isLoaded() ? glm::vec3(0.92f,0.76f,0.58f) : glm::vec3(0.12f,0.55f,1.0f);
@@ -232,3 +269,11 @@ void FieldUpdate(CombatSystem& combatSystem)
 }
 
 float getDeltaTime() { return deltaTime; }
+
+glm::vec3 GetBattleWorldOrigin()
+{
+    // エンカウント地点のワールド座標（プレイヤー位置にフォールバック）
+    return encounterTargetPosition.x == 0.0f && encounterTargetPosition.z == 0.0f
+        ? player.position
+        : encounterTargetPosition;
+}

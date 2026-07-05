@@ -19,6 +19,10 @@ public:
     bool isLoaded() const { return vao != 0 && indexCount > 0; }
     bool hasAnimation() const { return animated; }
     size_t getAnimationCount() const { return animations.size(); }
+    std::string getAnimationName(size_t index) const;
+    int findAnimationByKeywords(const std::vector<std::string>& keywords) const;
+    // 別FBXファイルからアニメーションクリップだけ追加読み込み
+    bool loadAnimationsFrom(const std::string& filePath, const std::string& clipName = "");
 
 private:
     struct DrawPart

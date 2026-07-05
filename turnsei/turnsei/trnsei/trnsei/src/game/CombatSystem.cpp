@@ -169,10 +169,6 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
         addLog(attacker->name + ": not enough charge");
         return;
     }
-    if (command == BattleCommand::Ultimate && attacker->energy < attacker->maxEnergy) {
-        addLog(attacker->name + ": not enough energy");
-        return;
-    }
 
     int originalPower = attacker->power;
     if (command == BattleCommand::Skill) {
@@ -294,7 +290,7 @@ void CombatSystem::returnToFieldAfterBattle()
     currentScene = Scene::Field;
 }
 
-//s“®‡‚ğŠÇ—‚·‚éŠÖ”
+//ï¿½sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç—ï¿½ï¿½ï¿½ï¿½ï¿½Öï¿½
 void CombatSystem::sortTurnOrder()
 {
     std::sort(participants.begin(), participants.end(), [](Character* a, Character* b) {
