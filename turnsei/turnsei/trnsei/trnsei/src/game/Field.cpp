@@ -1,5 +1,6 @@
 #include "Field.h"
 #include "ActorRenderer.h"
+#include "AIDialogue.h"
 #include "CombatSystem.h"
 #include "FieldEnemy.h"
 #include "Player.h"
@@ -8,11 +9,15 @@
 #include "../../assets/ImportedModel.h"
 #include "imgui.h"
 
+#include <algorithm>
+#include <atomic>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <string>
 
 Player player;
@@ -35,6 +40,28 @@ namespace
     FieldEnemy fieldEnemies[MAX_FIELD_ENEMIES];
     WalkAnimState playerWalkAnim;
     WalkAnimState enemyWalkAnim[MAX_FIELD_ENEMIES];
+
+    struct MapNpc {
+        std::string name;
+        glm::vec3 position;
+        float rotationY;
+        glm::vec3 color;
+    };
+
+    struct MapAIDialogueState {
+        bool isOpen = false;
+        bool interactWasDown = false;
+        const MapNpc* activeNpc = nullptr;
+        char inputBuf[256] = "";
+        std::string displayResponse;
+        std::atomic<bool> waiting{ false };
+        std::mutex mutex;
+    };
+
+    MapNpc mapNpcs[] = {
+        { "CPU Guide", glm::vec3(3.8f, 0.0f, 4.0f), 210.0f, glm::vec3(0.20f, 0.78f, 0.92f) },
+    };
+    MapAIDialogueState mapAi;
 
     bool FileExists(const std::string& path)
     {
@@ -128,7 +155,7 @@ namespace
 
     bool StartEncounterIfNeeded(CombatSystem& cs)
     {
-        if (encounterTransitionActive) return false;
+        if (encounterTransitionActive || mapAi.isOpen) return false;
         for (int i = 0; i < MAX_FIELD_ENEMIES; ++i) {
             if (!fieldEnemies[i].active) continue;
             glm::vec2 pxz(player.position.x, player.position.z);
@@ -142,6 +169,144 @@ namespace
             }
         }
         return false;
+    }
+
+    const MapNpc* FindTalkableNpc(float* outDistance = nullptr)
+    {
+        const MapNpc* nearest = nullptr;
+        float nearestDist = 9999.0f;
+        glm::vec2 pxz(player.position.x, player.position.z);
+        for (const MapNpc& npc : mapNpcs) {
+            glm::vec2 nxz(npc.position.x, npc.position.z);
+            float dist = glm::distance(pxz, nxz);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = &npc;
+            }
+        }
+        if (outDistance) *outDistance = nearestDist;
+        return nearestDist <= 2.7f ? nearest : nullptr;
+    }
+
+    void OpenNpcDialogue(const MapNpc* npc)
+    {
+        if (!npc) return;
+        if (mapAi.activeNpc != npc) {
+            std::lock_guard<std::mutex> lock(mapAi.mutex);
+            mapAi.displayResponse = npc->name + ": こんにちは。ここではEキーで私と会話できます。聞きたいことを入力してください。";
+            std::memset(mapAi.inputBuf, 0, sizeof(mapAi.inputBuf));
+        }
+        mapAi.activeNpc = npc;
+        mapAi.isOpen = true;
+    }
+
+    void UpdateNpcInteraction()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        bool interactDown = window && glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+        if (interactDown && !mapAi.interactWasDown && !io.WantCaptureKeyboard) {
+            float dist = 0.0f;
+            const MapNpc* npc = FindTalkableNpc(&dist);
+            if (npc) OpenNpcDialogue(npc);
+        }
+        mapAi.interactWasDown = interactDown;
+    }
+
+    void RenderNpcPrompt(int width, int height)
+    {
+        if (mapAi.isOpen) return;
+
+        float dist = 0.0f;
+        const MapNpc* npc = FindTalkableNpc(&dist);
+        if (!npc) return;
+
+        const char* text = "E : Talk";
+        ImDrawList* dl = ImGui::GetForegroundDrawList();
+        ImVec2 size = ImGui::CalcTextSize(text);
+        ImVec2 pad(18.0f, 10.0f);
+        ImVec2 minPos(((float)width - size.x) * 0.5f - pad.x, (float)height - 122.0f);
+        ImVec2 maxPos(((float)width + size.x) * 0.5f + pad.x, minPos.y + size.y + pad.y * 2.0f);
+        dl->AddRectFilled(minPos, maxPos, IM_COL32(8, 18, 28, 210), 6.0f);
+        dl->AddRect(minPos, maxPos, IM_COL32(80, 205, 240, 180), 6.0f, 0, 1.5f);
+        dl->AddText(ImVec2(minPos.x + pad.x, minPos.y + pad.y), IM_COL32(235, 250, 255, 255), text);
+    }
+
+    void RenderMapAIDialogue()
+    {
+        if (!mapAi.isOpen || !mapAi.activeNpc) return;
+
+        ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+        float dlgW = std::min(430.0f, screenSize.x - 40.0f);
+        float dlgH = 260.0f;
+        ImGui::SetNextWindowPos(ImVec2(screenSize.x - dlgW - 24.0f, screenSize.y - dlgH - 28.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(dlgW, dlgH), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.075f, 0.095f, 0.96f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.28f, 0.80f, 0.90f, 0.75f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.5f);
+
+        bool dlgOpen = mapAi.isOpen;
+        if (ImGui::Begin("##MapAIDialogue", &dlgOpen,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+            ImGui::TextColored(ImVec4(0.55f, 0.92f, 1.0f, 1.0f), "%s", mapAi.activeNpc->name.c_str());
+            ImGui::SameLine(dlgW - 64.0f);
+            if (ImGui::SmallButton("Close")) {
+                dlgOpen = false;
+                mapAi.isOpen = false;
+            }
+            ImGui::Separator();
+
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.02f, 0.04f, 0.05f, 0.68f));
+            ImGui::BeginChild("##MapAIResponse", ImVec2(0, 145.0f), true);
+            if (mapAi.waiting.load()) {
+                ImGui::TextColored(ImVec4(0.72f, 0.82f, 0.86f, 1.0f), "Thinking...");
+            }
+            else {
+                std::lock_guard<std::mutex> lock(mapAi.mutex);
+                if (mapAi.displayResponse.empty()) {
+                    ImGui::TextColored(ImVec4(0.58f, 0.66f, 0.70f, 1.0f), "Talk to this character.");
+                }
+                else {
+                    ImGui::TextWrapped("%s", mapAi.displayResponse.c_str());
+                }
+            }
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+
+            ImGui::SetNextItemWidth(dlgW - 112.0f);
+            bool enterPressed = ImGui::InputText("##MapAIInput", mapAi.inputBuf, sizeof(mapAi.inputBuf),
+                ImGuiInputTextFlags_EnterReturnsTrue);
+            ImGui::SameLine();
+
+            bool canSend = !mapAi.waiting.load() && std::strlen(mapAi.inputBuf) > 0;
+            if (!canSend) ImGui::BeginDisabled();
+            bool sendClicked = ImGui::Button("Send", ImVec2(70.0f, 0.0f));
+            if (!canSend) ImGui::EndDisabled();
+
+            if (canSend && (sendClicked || enterPressed)) {
+                std::string input = mapAi.inputBuf;
+                std::memset(mapAi.inputBuf, 0, sizeof(mapAi.inputBuf));
+                mapAi.waiting.store(true);
+                {
+                    std::lock_guard<std::mutex> lock(mapAi.mutex);
+                    mapAi.displayResponse.clear();
+                }
+
+                CharacterPersonality persona = GetPersonalityForCharacter(mapAi.activeNpc->name);
+                DialogueContext ctx;
+                ctx.inBattle = false;
+                CallLocalDialogueAsync(input, persona, ctx, [](const std::string& resp) {
+                    std::lock_guard<std::mutex> lock(mapAi.mutex);
+                    mapAi.displayResponse = resp;
+                    mapAi.waiting.store(false);
+                });
+            }
+        }
+        ImGui::End();
+        if (!dlgOpen) mapAi.isOpen = false;
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(2);
     }
 }
 
@@ -177,13 +342,18 @@ void FieldUpdate(CombatSystem& combatSystem)
         encounterTransitionTime += deltaTime;
     }
     else {
-        player.Update(deltaTime, window, cameraYaw);
+        UpdateNpcInteraction();
+        if (!mapAi.isOpen) {
+            player.Update(deltaTime, window, cameraYaw);
+        }
         player.position.y = GetTerrainHeight(player.position.x, player.position.z);
-        UpdateCameraInput();
+        if (!mapAi.isOpen) UpdateCameraInput();
         UpdateFieldEnemies(fieldEnemies, deltaTime);
         for (int i = 0; i < MAX_FIELD_ENEMIES; ++i)
             if (fieldEnemies[i].active)
                 fieldEnemies[i].position.y = GetTerrainHeight(fieldEnemies[i].position.x, fieldEnemies[i].position.z);
+        for (MapNpc& npc : mapNpcs)
+            npc.position.y = GetTerrainHeight(npc.position.x, npc.position.z);
     }
     StartEncounterIfNeeded(combatSystem);
 
@@ -252,6 +422,11 @@ void FieldUpdate(CombatSystem& combatSystem)
     glm::vec3 pColor = playerModel.isLoaded() ? glm::vec3(0.92f,0.76f,0.58f) : glm::vec3(0.12f,0.55f,1.0f);
     DrawActor(player.position, pScale, pColor, view, proj, camPos, player.rotationY, &playerModel, moving, &playerWalkAnim);
 
+    for (const MapNpc& npc : mapNpcs) {
+        DrawActor(npc.position, glm::vec3(1.05f, 2.0f, 1.05f), npc.color,
+                  view, proj, camPos, npc.rotationY, nullptr, false, nullptr);
+    }
+
     for (int i = 0; i < MAX_FIELD_ENEMIES; ++i) {
         if (!fieldEnemies[i].active) continue;
         UpdateWalkAnimation(enemyWalkAnim[i], deltaTime, fieldEnemies[i].moving);
@@ -261,6 +436,8 @@ void FieldUpdate(CombatSystem& combatSystem)
     glBindVertexArray(0);
 
     DrawEncounterOverlay(fbW, fbH, encProgress);
+    RenderNpcPrompt(fbW, fbH);
+    RenderMapAIDialogue();
     if (encounterTransitionActive && encounterTransitionTime >= encounterTransitionDuration) {
         encounterTransitionActive = false;
         combatSystem.resetBattle();

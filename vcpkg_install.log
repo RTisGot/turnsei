@@ -1,0 +1,48 @@
+Computing installation plan...
+The following packages will be built and installed:
+    ggml[core,vulkan]:x64-windows@2025-11-17#2
+  * glslang:x64-windows@16.2.0
+    llama-cpp:x64-windows@7146
+  * shaderc:x64-windows@2026.2
+  * spirv-headers:x64-windows@1.4.341.0
+  * spirv-tools:x64-windows@1.4.341.0
+    vulkan:x64-windows@2023-12-17
+  * vulkan-headers:x64-windows@1.4.341.0
+  * vulkan-loader:x64-windows@1.4.341.0
+Additional packages (*) will be modified to complete this operation.
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+Restored 0 package(s) from C:\Users\rere0\AppData\Local\vcpkg\archives in 999 us. Use --debug to see more details.
+Installing 1/9 glslang:x64-windows@16.2.0...
+glslang:x64-windows@16.2.0 package ABI: cfafd762ad9c4add9e8ae923eb52f65e0d6642858dd14cf23ed374c3545322c7
+Building glslang:x64-windows@16.2.0...
+-- Note: glslang only supports static library linkage. Building static library.
+Downloading https://github.com/KhronosGroup/glslang/archive/16.2.0.tar.gz -> KhronosGroup-glslang-16.2.0.tar.gz
+error: curl operation failed with error code 35 (SSL connect error).
+error: Not a transient network error, won't retry download from https://github.com/KhronosGroup/glslang/archive/16.2.0.tar.gz
+note: If you are using a proxy, please ensure your proxy settings are correct.
+Possible causes are:
+1. You are actually using an HTTP proxy, but setting HTTPS_PROXY variable to `https://address:port`.
+This is not correct, because `https://` prefix claims the proxy is an HTTPS proxy, while your proxy (v2ray, shadowsocksr, etc...) is an HTTP proxy.
+Try setting `http://address:port` to both HTTP_PROXY and HTTPS_PROXY instead.
+2. If you are using Windows, vcpkg will automatically use your Windows IE Proxy Settings set by your proxy software. See: https://github.com/microsoft/vcpkg-tool/pull/77
+The value set by your proxy might be wrong, or have same `https://` prefix issue.
+3. Your proxy's remote server is out of service.
+If you believe this is not a temporary download server failure and vcpkg needs to be changed to download this file from a different location, please submit an issue to https://github.com/Microsoft/vcpkg/issues
+CMake Error at scripts/cmake/vcpkg_download_distfile.cmake:136 (message):
+  Download failed, halting portfile.
+Call Stack (most recent call first):
+  scripts/cmake/vcpkg_from_github.cmake:120 (vcpkg_download_distfile)
+  ports/glslang/portfile.cmake:3 (vcpkg_from_github)
+  scripts/ports.cmake:206 (include)
+
+
+error: building glslang:x64-windows failed with: BUILD_FAILED
+See https://learn.microsoft.com/vcpkg/troubleshoot/build-failures?WT.mc_id=vcpkg_inproduct_cli for more information.
+Elapsed time to handle glslang:x64-windows: 371 ms
+Please ensure you're using the latest port files with `git pull` and `vcpkg update`.
+Then check for known issues at:
+  https://github.com/microsoft/vcpkg/issues?q=is%3Aissue+is%3Aopen+in%3Atitle+glslang
+You can submit a new issue at:
+  https://github.com/microsoft/vcpkg/issues/new?title=%5Bglslang%5D%20build%20error%20on%20x64-windows&body=Copy%20issue%20body%20from%20D%3A%2FTurnsei%2Fvcpkg%2Finstalled%2Fvcpkg%2Fissue_body.md
+

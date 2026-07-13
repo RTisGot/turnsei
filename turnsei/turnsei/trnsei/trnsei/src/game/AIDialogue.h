@@ -25,15 +25,15 @@ struct DialogueContext {
 
 using DialogueCallback = std::function<void(const std::string& response)>;
 
-// 同期呼び出し (フレームがブロックされる)
-std::string CallClaudeDialogue(
+// 同期呼び出し (フレームがブロックされる。初回はモデルロードも行うため特に重い)
+std::string CallLocalDialogue(
     const std::string& playerInput,
     const CharacterPersonality& personality,
     const DialogueContext& context
 );
 
 // 非同期呼び出し (バックグラウンドスレッドで実行し、完了時にcallbackを呼ぶ)
-void CallClaudeDialogueAsync(
+void CallLocalDialogueAsync(
     const std::string& playerInput,
     const CharacterPersonality& personality,
     const DialogueContext& context,

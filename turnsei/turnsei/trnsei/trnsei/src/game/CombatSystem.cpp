@@ -18,34 +18,43 @@
 #include <string>
 #include <vector>
 
+// --------------------------------------------------
+// ターン順表示
+// --------------------------------------------------
 void CombatSystem::displayTurnOrder()
 {
     sortTurnOrder();
 
-    std::cout << u8"-------" << std::endl;
+    //全員を順番に並べる
     for (size_t i = 0; i < participants.size(); i++)
     {
-        if (!participants[i] || participants[i]->currentHp <= 0) continue;
+        if (!participants[i] || participants[i]->currentHp <= 0) continue;//キャラが存在しないか、HPがなかったら返す
         std::cout << (i + 1) << u8": " << participants[i]->name << std::endl;
     }
 }
-
+//----------------------------------------------------
+//表示を切り替える
 void CombatSystem::toggleVisibility()
 {
     isVisible = !isVisible;
 }
 
+//
+//コマンド切り替え
+//
 static const char* GetCommandName(BattleCommand command)
 {
     switch (command) {
-    case BattleCommand::BasicAttack: return "Basic";
-    case BattleCommand::Skill: return "Skill";
-    case BattleCommand::Ultimate: return "Ultimate";
+    case BattleCommand::BasicAttack: return "Basic";//基本攻撃
+    case BattleCommand::Skill: return "Skill";      //スキル
+    case BattleCommand::Ultimate: return "Ultimate";//必殺
     default: return "None";
     }
 }
 
-
+//
+//戦闘画面か分ける
+//
 void CombatSystem::renderUI(int screenWidth, int screenHeight)
 {
     if (!isVisible || participants.empty()) return;
@@ -53,17 +62,17 @@ void CombatSystem::renderUI(int screenWidth, int screenHeight)
     sortTurnOrder();
     checkBattleState();
 
-    Character* activeChar = getActiveCharacter();
-    if (battleState != BattleState::InProgress) {
-        if (!battleEndQueued) {
-            battleEndQueued = true;
-            battleEndStartTime = ImGui::GetTime();
+    Character* activeChar = getActiveCharacter();//現在行動中のキャラクターのポインタを取得
+    if (battleState != BattleState::InProgress) {//戦闘が終わった後の場合
+        if (!battleEndQueued) {                  
+            battleEndQueued = true;              //戦闘処理を開始
+            battleEndStartTime = ImGui::GetTime();//
             battleEndResult = battleState;
             pendingCommand = BattleCommand::None;
             enemyActionQueued = false;
         }
 
-        renderBattleScene(activeChar, screenWidth, screenHeight);
+        renderBattleScene(activeChar, screenWidth, screenHeight);//戦闘シーンの描画
         renderBattleEndOverlay(screenWidth, screenHeight);
         if (ImGui::GetTime() - battleEndStartTime >= 2.4) {
             returnToFieldAfterBattle();
@@ -290,7 +299,7 @@ void CombatSystem::returnToFieldAfterBattle()
     currentScene = Scene::Field;
 }
 
-//�s�������Ǘ�����֐�
+//
 void CombatSystem::sortTurnOrder()
 {
     std::sort(participants.begin(), participants.end(), [](Character* a, Character* b) {

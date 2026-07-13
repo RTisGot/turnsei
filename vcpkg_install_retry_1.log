@@ -1,0 +1,38 @@
+Computing installation plan...
+The following packages are already installed:
+    vulkan:x64-windows@2023-12-17
+The following packages will be built and installed:
+    ggml[core,vulkan]:x64-windows@2025-11-17#2
+    llama-cpp:x64-windows@7146
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+Restored 0 package(s) from C:\Users\rere0\AppData\Local\vcpkg\archives in 404 us. Use --debug to see more details.
+Installing 1/2 ggml[core,vulkan]:x64-windows@2025-11-17#2...
+ggml[core,vulkan]:x64-windows@2025-11-17#2 package ABI: 6892bb9a53c05385fd2a6400cfd4e455c23b6eab93d9fbfb241e70efaaf721e2
+Building ggml[core,vulkan]:x64-windows@2025-11-17#2...
+-- Using cached ggml-org-ggml-55bc9320a4aae82af18e23eefd5de319a755d7b9.tar.gz
+-- Cleaning sources at D:/Turnsei/vcpkg/buildtrees/ggml/src/19a755d7b9-528b43b27d.clean. Use --editable to skip cleaning for the packages you specify.
+-- Extracting source D:/Turnsei/vcpkg/downloads/ggml-org-ggml-55bc9320a4aae82af18e23eefd5de319a755d7b9.tar.gz
+-- Applying patch cmake-config.diff
+-- Applying patch pkgconfig.diff
+-- Applying patch relax-link-options.diff
+-- Applying patch vulkan-shaders-gen.diff
+-- Applying patch fix-dequant_funcs.diff
+-- Applying patch cuda-13-2.diff
+-- Using source at D:/Turnsei/vcpkg/buildtrees/ggml/src/19a755d7b9-528b43b27d.clean
+-- Configuring x64-windows
+-- Building x64-windows-dbg
+-- Building x64-windows-rel
+CMake Error at scripts/cmake/vcpkg_execute_build_process.cmake:134 (message):
+    Command failed: D:/Turnsei/vcpkg/downloads/tools/cmake-4.3.2-windows/cmake-4.3.2-windows-x86_64/bin/cmake.exe --build . --config Release --target install -- -v -j29
+    Working Directory: D:/Turnsei/vcpkg/buildtrees/ggml/x64-windows-rel
+    See logs for more information:
+      D:\Turnsei\vcpkg\buildtrees\ggml\install-x64-windows-rel-out.log
+
+Call Stack (most recent call first):
+  installed/x64-windows/share/vcpkg-cmake/vcpkg_cmake_build.cmake:74 (vcpkg_execute_build_process)
+  installed/x64-windows/share/vcpkg-cmake/vcpkg_cmake_install.cmake:16 (vcpkg_cmake_build)
+  ports/ggml/portfile.cmake:83 (vcpkg_cmake_install)
+  scripts/ports.cmake:206 (include)
+
+
