@@ -91,8 +91,10 @@ void CombatSystem::renderUI(int screenWidth, int screenHeight)
 }
 static bool pKeyWasPressed = false;
 
+//キーボード入力でゲームの処理を行う関数
 void processInput(GLFWwindow* window, CombatSystem& combatSystem) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        //ウィンドウを閉じる処理
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
@@ -105,7 +107,7 @@ void processInput(GLFWwindow* window, CombatSystem& combatSystem) {
         pKeyWasPressed = false;
     }
 }
-
+//戦闘に参加するキャラクターを追加する
 void CombatSystem::addParticipant(Character* character) {
     if (character != nullptr) {
         participants.push_back(character);
