@@ -114,12 +114,15 @@ void CombatSystem::addParticipant(Character* character) {
     }
 }
 
+//スキル攻撃の処理
 void CombatSystem::executeSkill(Character* attacker, Character* target)
 {
     if (!attacker || !target || battleState != BattleState::InProgress) return;
 
+    //攻撃力から対象の防御力を引く
     int damage = attacker->power - (target->defense / 2);
     if (damage < 1) damage = 1;
+
 
     bool isCritical = (rand() % 100) < attacker->critical;
     if (isCritical) {
