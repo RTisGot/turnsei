@@ -5,7 +5,9 @@
 #include "Scene.h"
 #include <iostream>
 
-//extern int g_Scene;
+/// <summary>
+///storyEvent.cpp側でストーリーをロードする必要があるかどうかのフラグ
+/// </summary>
 extern bool g_StoryNeedsLoad;
 
 void TitleUpdate()
@@ -16,7 +18,7 @@ void TitleUpdate()
 	ImGui::Begin("Main Menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 	//
-	if (ImGui::Button("Click to Start", ImVec2(200, 100))) {
+	if (ImGui::Button("Click to Start", ImVec2(500, 100))) {
 		std::cout << "Game Start" << std::endl;
 		currentScene = Scene::StoryEvent;
 		g_StoryNeedsLoad = true;
@@ -25,18 +27,18 @@ void TitleUpdate()
 		}
 	}
 
-	if (ImGui::Button("Battle Demo", ImVec2(200, 100)))
+	if (ImGui::Button("Battle Demo", ImVec2(500, 100)))
 	{
 		currentScene = Scene::Battle;
 	}
 
-	if (ImGui::Button("Setting", ImVec2(200, 100)))
+	if (ImGui::Button("Setting", ImVec2(500, 100)))
 	{
 		std::cout << "Setting" << std::endl;
 
 	}
 
-	if (ImGui::Button("Exit", ImVec2(200, 100)))
+	if (ImGui::Button("Exit", ImVec2(500, 100)))
 	{
 		std::cout << "Exit" << std::endl;
 		exit(0);

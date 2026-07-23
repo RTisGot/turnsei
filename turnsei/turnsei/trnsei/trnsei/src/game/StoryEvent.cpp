@@ -152,7 +152,7 @@ void StoryEvent() {
     }
 
     
-    // 3. メッセージウィンドウを表示（UpdateStoryを呼ぶ）
+    // メッセージウィンドウを表示（UpdateStoryを呼ぶ）
     UpdateStory();
 }
 
@@ -229,7 +229,7 @@ void UpdateStory()
     ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight));
 
-    // --- 3. セリフウィンドウの表示 ---
+    // --- セリフウィンドウの表示 ---
     ImGui::Begin("DialogueWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     // キャラクター名表示のカスタマイズ

@@ -14,8 +14,8 @@ namespace
 }
 
 void Player::Init() {
-    // ここに立方体の頂点データを定義（static等にしてファイル内に隠蔽）
-  // 頂点データ (Position: 3, Color: 3)
+    //立方体の頂点データを定義（
+  // 頂点データ
     float vertices[] = {
         // 座標 (x, y, z)          // 色 (r, g, b)
         // 底面 (y=0)
@@ -47,7 +47,7 @@ void Player::Init() {
         4, 5, 6,  6, 7, 4
     };
 
-    // OpenGLのバッファ生成（glGenVertexArraysなど）
+    
     // ...
     this->indexCount = 36; // 立方体の全インデックス数
 }
@@ -76,8 +76,9 @@ void Player::Update(float deltaTime, GLFWwindow* window, float cameraYaw) {
     }
 
     float moveSpeed = 5.0f;
-    glm::vec3 inputDir(0.0f);
+	glm::vec3 inputDir(0.0f);//入力方向の初期化
 
+	//キー入力に基づいて移動方向を決定
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) inputDir.z -= 1.0f;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) inputDir.z += 1.0f;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) inputDir.x -= 1.0f;

@@ -4,3 +4,9 @@ D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\minizip.dll
 D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\zd.dll
 D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\kubazip.dll
 D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\pugixml.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\assimp-vc143-mtd.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\poly2tri.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\minizip.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\zd.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\kubazip.dll
+C:\Turnsei100\turnsei\turnsei\trnsei\x64\Debug\pugixml.dll

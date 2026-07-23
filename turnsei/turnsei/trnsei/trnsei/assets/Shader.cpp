@@ -33,6 +33,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
         vertexCode = vShaderStream.str();
         fragmentCode = fShaderStream.str();
     }
+    //エラーが発生した際の処理
     catch (std::ifstream::failure& e) {
         std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ: " << e.what() << std::endl;
     }
@@ -45,8 +46,8 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
     char infoLog[512];
 
     //頂点シェーダー
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vShaderCode, NULL);
+	vertex = glCreateShader(GL_VERTEX_SHADER);     //頂点シェーダーの作成
+	glShaderSource(vertex, 1, &vShaderCode, NULL);//頂点シェーダー
     glCompileShader(vertex);
     glGetShaderiv(vertex, GL_COMPILE_STATUS, &compileSuccess);
     if (!compileSuccess) {
@@ -64,7 +65,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
 
-    // 3. シェーダープログラムのリンク
+    // シェーダープログラムのリンク
     ID = glCreateProgram();
     glAttachShader(ID, vertex);
     glAttachShader(ID, fragment);

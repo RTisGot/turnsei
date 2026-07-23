@@ -18,18 +18,18 @@ struct Glyph {
 
 class Renderer {
 public:
-    // 1. 初期化と基本設定
+    //  初期化と基本設定
    Renderer();
     ~Renderer();
    
-    // 2. 「ターン制アクション」の視覚化
+    // 「ターン制アクション」の視覚化
     // 画面の右側などに行動順タイムラインや名前を表示する
     void drawText(std::string text, float x, float y, float scale, glm::vec3 color);
 
 private:
     // テキスト描画用のデータ
     unsigned int textVAO, textVBO;
-    Shader textShader; // 先ほど議論したTextShader
+    Shader textShader; //TextShader
     
     // ウィンドウサイズ情報
     int screenWidth;
