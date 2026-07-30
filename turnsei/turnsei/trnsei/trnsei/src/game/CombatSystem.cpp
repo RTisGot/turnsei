@@ -113,20 +113,22 @@ void CombatSystem::addParticipant(Character* character) {
         participants.push_back(character);
     }
 }
-
+//----------
 //スキル攻撃の処理
+//----
 void CombatSystem::executeSkill(Character* attacker, Character* target)
 {
     if (!attacker || !target || battleState != BattleState::InProgress) return;
 
     //攻撃力から対象の防御力を引く
     int damage = attacker->power - (target->defense / 2);
-    if (damage < 1) damage = 1;
+    if (damage < 1) damage = 1;            //ダメージが1より小さければ1にする
 
 
-    bool isCritical = (rand() % 100) < attacker->critical;
+    bool isCritical = (rand() % 100) < attacker->critical;//クリティカルが発生する割合をランダムに
+    
     if (isCritical) {
-        damage = damage * attacker->criticalDamage / 100;
+        damage = damage * attacker->criticalDamage / 100;//クリティカルが出たときのダメージ計算
     }
 
     if (target->isGuarding) {
@@ -135,12 +137,12 @@ void CombatSystem::executeSkill(Character* attacker, Character* target)
         target->isGuarding = false;
     }
 
-    target->currentHp -= damage;
+    target->currentHp -= damage;//現在のHPからdamage分を引く
     if (target->currentHp < 0) target->currentHp = 0;
 
     DamagePopup popup;
-    popup.target = target;
-    popup.amount = damage;
+    popup.target = target;         //ダメージを与えた相手
+    popup.amount = damage;         //ダメージを計算を保存
     popup.isCritical = isCritical;
     popup.startTime = ImGui::GetTime();
     popup.xOffset = static_cast<float>((rand() % 41) - 20);
@@ -209,6 +211,7 @@ void CombatSystem::executeCommand(Character* attacker, Character* target)
     if (target->currentHp <= 0 && markedTarget == target) markedTarget = nullptr;
 }
 
+//戦闘勝利フラグを受け取る
 bool CombatSystem::consumeBattleVictory()
 {
     bool won = lastBattleVictory;

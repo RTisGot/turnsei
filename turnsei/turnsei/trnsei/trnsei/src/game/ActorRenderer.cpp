@@ -193,9 +193,9 @@ void DrawActor(
 
     bool proceduralWalk = isWalking && !(importedModel && importedModel->hasAnimation());
     if (proceduralWalk || anim.blend > 0.001f) {
-        float bob = std::abs(std::sin(anim.time * 9.0f)) * 0.13f;
-        float tilt = std::sin(anim.time * 4.5f) * 0.075f;
-        float sway = std::sin(anim.time * 9.0f) * 0.035f;
+        float bob = std::abs(std::sin(anim.time * 9.5f)) * 0.16f;
+        float tilt = std::sin(anim.time * 4.75f) * 0.085f;
+        float sway = std::sin(anim.time * 9.5f) * 0.050f;
         drawPos.y += bob * anim.blend;
         model = glm::translate(model, drawPos);
         model = glm::rotate(model, glm::radians(modelFacingY), glm::vec3(0,1,0));

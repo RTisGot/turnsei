@@ -351,13 +351,30 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         enemyModel.updateAnimation(animationDelta);
     }
 
-    glm::vec3 cameraPosition(0.0f, 6.0f, 14.2f);
+    std::vector<Character*> fixedEnemyOrder;
+    for (auto* character : participants) {
+        if (character && character->isAlly == 0) {
+            fixedEnemyOrder.push_back(character);
+        }
+    }
+    std::sort(fixedEnemyOrder.begin(), fixedEnemyOrder.end(), [](const Character* a, const Character* b) {
+        return a->name < b->name;
+    });
+    const int enemyCount = static_cast<int>(fixedEnemyOrder.size());
+
+    // Cinematic over-the-shoulder composition:
+    // Keep the same framing while choosing a target. Target highlighting is UI-only.
+    const float cameraDrift = std::sin((float)currentAnimationTime * 0.32f);
+    // Keep one stable composition through player and enemy turns.
+    // Attacking must not flip the camera when activeChar changes.
+    glm::vec3 cameraPosition(-8.1f + cameraDrift * 0.22f, 3.95f, 15.0f);
+    glm::vec3 cameraTarget(0.57f, 1.48f, -0.9f);
     glm::mat4 view = glm::lookAt(
         cameraPosition,
-        glm::vec3(0.0f, 1.55f, 0.2f),
+        cameraTarget,
         glm::vec3(0.0f, 1.0f, 0.0f)
     );
-    glm::mat4 projection = glm::perspective(glm::radians(43.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(glm::radians(40.0f), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
     glm::mat4 viewProjection = projection * view;
 
     glViewport(0, 0, screenWidth, screenHeight);
@@ -368,8 +385,8 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
     {
         glm::vec3 worldOrigin = GetBattleWorldOrigin();
         // 繝舌ヨ繝ｫ繧ｫ繝｡繝ｩ縺ｨ蜷後§逶ｸ蟇ｾ繧ｪ繝輔そ繝・ヨ縺ｧ繝ｯ繝ｼ繝ｫ繝臥ｩｺ髢薙↓驟咲ｽｮ
-        glm::vec3 bgCamPos    = worldOrigin + glm::vec3(0.0f,  6.0f, 14.2f);
-        glm::vec3 bgCamTarget = worldOrigin + glm::vec3(0.0f,  1.55f,  0.2f);
+        glm::vec3 bgCamPos = worldOrigin + cameraPosition;
+        glm::vec3 bgCamTarget = worldOrigin + cameraTarget;
         glm::mat4 bgView = glm::lookAt(bgCamPos, bgCamTarget, glm::vec3(0,1,0));
         DrawSimpleMap(bgView, projection, bgCamPos);
         // 豺ｱ蠎ｦ縺縺代け繝ｪ繧｢縺励※繝舌ヨ繝ｫ繧ｭ繝｣繝ｩ繧呈焔蜑阪↓謠冗判縺ｧ縺阪ｋ繧医≧縺ｫ縺吶ｋ
@@ -389,33 +406,38 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
 
     std::vector<std::pair<Character*, glm::vec3>> actorPositions;
     std::vector<std::pair<Character*, glm::vec3>> enemyPositions;
-    int enemyIndex = 0;
-    int enemyCount = 0;
-    for (auto* character : participants) {
-        if (character && character->isAlly == 0 && character->currentHp > 0) ++enemyCount;
-    }
 
     for (auto* character : participants) {
         if (!character || character->currentHp <= 0) continue;
+
+        int enemyIndex = 0;
+        if (character->isAlly == 0) {
+            auto fixedSlot = std::find(fixedEnemyOrder.begin(), fixedEnemyOrder.end(), character);
+            enemyIndex = fixedSlot != fixedEnemyOrder.end()
+                ? static_cast<int>(std::distance(fixedEnemyOrder.begin(), fixedSlot))
+                : 0;
+        }
 
         glm::vec3 position;
         glm::vec3 scale;
         glm::vec3 color;
         if (character->isAlly == 1) {
-            position = glm::vec3(-1.45f, 0.0f, 9.4f);
+            position = glm::vec3(-2.45f, 0.0f, 8.0f);
             scale = g_playerModel.isLoaded()
-                ? glm::vec3(4.45f, 4.9f, 4.45f)
-                : glm::vec3(2.6f, 5.1f, 2.6f);
+                ? glm::vec3(4.65f, 5.1f, 4.65f)
+                : glm::vec3(2.7f, 5.25f, 2.7f);
             color = g_playerModel.isLoaded()
                 ? glm::vec3(0.92f, 0.76f, 0.58f)
                 : glm::vec3(0.18f, 0.55f, 0.88f);
         }
         else {
-            float spacing = 3.0f;
+            float spacing = 2.65f;
             float x = (enemyIndex - (enemyCount - 1) * 0.5f) * spacing;
-            float depth = -3.75f + std::abs(enemyIndex - (enemyCount - 1) * 0.5f) * 0.18f;
-            position = glm::vec3(x + 1.25f, 0.0f, depth);
-            scale = glm::vec3(2.7f, 3.0f, 2.7f);
+            float side = enemyIndex - (enemyCount - 1) * 0.5f;
+            float depth = -3.55f + side * 0.34f;
+            position = glm::vec3(x + 1.35f, 0.0f, depth);
+            float focusScale = markedTarget == character ? 1.08f : 1.0f;
+            scale = glm::vec3(2.75f, 3.08f, 2.75f) * focusScale;
             color = markedTarget == character ? glm::vec3(1.0f, 0.76f, 0.12f) : glm::vec3(0.82f, 0.20f, 0.18f);
             enemyPositions.push_back(std::make_pair(character, position));
         }
@@ -492,7 +514,6 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
                 glBindVertexArray(g_battleCubeVao);
                 glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
             }
-            ++enemyIndex;
         }
         else {
             if (g_playerModel.isLoaded()) {
@@ -696,26 +717,114 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar|
         ImGuiWindowFlags_NoDecoration;
 
-    ImGui::SetNextWindowPos(ImVec2(18.0f, (float)screenHeight - 100.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(310.0f, 300.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(24.0f, (float)screenHeight - 266.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(480.0f, 258.0f), ImGuiCond_Always);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
     if (ImGui::Begin("##PartyHud", nullptr, hudFlags)) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImVec2 origin = ImGui::GetWindowPos();
+        int allyIndex = 0;
         for (auto* c : participants) {
             if (!c || c->isAlly != 1) continue;
 
             float hpFraction = c->hp > 0 ? (float)c->currentHp / (float)c->hp : 0.0f;
-            ImGui::Text("%s", c->name.c_str());
-            ImGui::SameLine(145.0f);
-            ImGui::Text("%d / %d", c->currentHp, c->hp);
-            ImVec4 hpColor = hpFraction < 0.25f
-                ? ImVec4(0.95f, 0.22f, 0.18f, 1.0f)
-                : ImVec4(0.15f, 0.78f, 0.68f, 1.0f);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, hpColor);
-            ImGui::ProgressBar(hpFraction, ImVec2(-1.0f, 8.0f), "");
-            ImGui::PopStyleColor();
+            float spFraction = c->maxEnergy > 0 ? (float)c->energy / (float)c->maxEnergy : 0.0f;
+            hpFraction = std::max(0.0f, std::min(hpFraction, 1.0f));
+            spFraction = std::max(0.0f, std::min(spFraction, 1.0f));
+
+            const float rowY = 4.0f + allyIndex * 124.0f;
+            const ImVec2 sigil(origin.x + 54.0f, origin.y + rowY + 52.0f);
+            const float textX = origin.x + 104.0f;
+            const float barX = origin.x + 151.0f;
+            const float barWidth = 275.0f;
+            const bool isActive = c == activeChar;
+
+            // Strong translucent backing for readability against any map color.
+            dl->AddRectFilledMultiColor(
+                ImVec2(origin.x + 5.0f, origin.y + rowY),
+                ImVec2(origin.x + 465.0f, origin.y + rowY + 112.0f),
+                IM_COL32(3, 7, 17, 205),
+                IM_COL32(7, 10, 24, 174),
+                IM_COL32(5, 8, 19, 192),
+                IM_COL32(2, 5, 13, 215));
+            dl->AddRect(
+                ImVec2(origin.x + 5.0f, origin.y + rowY),
+                ImVec2(origin.x + 465.0f, origin.y + rowY + 112.0f),
+                IM_COL32(168, 132, 215, isActive ? 115 : 55), 3.0f, 0, 1.0f);
+
+            // Circular sigil used as the visual anchor.
+            dl->AddCircleFilled(sigil, 31.0f, IM_COL32(28, 20, 47, 205), 32);
+            dl->AddCircle(sigil, 30.0f, IM_COL32(199, 165, 239, isActive ? 225 : 135), 32, 1.5f);
+            dl->AddCircle(sigil, 20.0f, IM_COL32(158, 126, 201, 155), 24, 1.1f);
+            dl->AddLine(ImVec2(sigil.x - 38.0f, sigil.y), ImVec2(sigil.x + 38.0f, sigil.y),
+                IM_COL32(183, 151, 223, 105), 1.0f);
+            dl->AddLine(ImVec2(sigil.x, sigil.y - 38.0f), ImVec2(sigil.x, sigil.y + 38.0f),
+                IM_COL32(183, 151, 223, 105), 1.0f);
+            dl->AddTriangle(
+                ImVec2(sigil.x, sigil.y - 15.0f),
+                ImVec2(sigil.x + 13.0f, sigil.y + 9.0f),
+                ImVec2(sigil.x - 13.0f, sigil.y + 9.0f),
+                IM_COL32(218, 199, 246, 170), 1.1f);
+            dl->AddCircleFilled(sigil, 3.0f,
+                isActive ? IM_COL32(226, 197, 255, 245) : IM_COL32(154, 132, 185, 155), 12);
+
+            // Name and fine divider.
+            const float nameFontSize = 25.0f;
+            const float statFontSize = 17.0f;
+            ImFont* hudFont = ImGui::GetFont();
+            dl->AddText(hudFont, nameFontSize,
+                ImVec2(textX + 1.0f, origin.y + rowY + 8.0f),
+                IM_COL32(39, 20, 65, 220), c->name.c_str());
+            dl->AddText(hudFont, nameFontSize,
+                ImVec2(textX, origin.y + rowY + 7.0f),
+                isActive ? IM_COL32(250, 244, 255, 255) : IM_COL32(226, 223, 237, 240),
+                c->name.c_str());
+            dl->AddLine(
+                ImVec2(textX, origin.y + rowY + 31.0f),
+                ImVec2(origin.x + 449.0f, origin.y + rowY + 31.0f),
+                IM_COL32(199, 158, 241, isActive ? 175 : 90), 1.0f);
+
+            char hpText[32];
+            char spText[32];
+            snprintf(hpText, sizeof(hpText), "%d / %d", c->currentHp, c->hp);
+            snprintf(spText, sizeof(spText), "%d / %d", c->energy, c->maxEnergy);
+
+            dl->AddText(hudFont, statFontSize,
+                ImVec2(textX, origin.y + rowY + 38.0f), IM_COL32(246, 240, 252, 255), "HP");
+            dl->AddText(hudFont, statFontSize,
+                ImVec2(textX, origin.y + rowY + 76.0f), IM_COL32(213, 182, 250, 255), "SP");
+            ImVec2 hpValueSize = hudFont->CalcTextSizeA(statFontSize, FLT_MAX, 0.0f, hpText);
+            ImVec2 spValueSize = hudFont->CalcTextSizeA(statFontSize, FLT_MAX, 0.0f, spText);
+            dl->AddText(hudFont, statFontSize,
+                ImVec2(origin.x + 449.0f - hpValueSize.x, origin.y + rowY + 38.0f),
+                IM_COL32(250, 246, 255, 255), hpText);
+            dl->AddText(hudFont, statFontSize,
+                ImVec2(origin.x + 449.0f - spValueSize.x, origin.y + rowY + 76.0f),
+                IM_COL32(226, 202, 255, 245), spText);
+
+            // Thin luminous HP/SP lines like the reference HUD.
+            const float hpY = origin.y + rowY + 60.0f;
+            const float spY = origin.y + rowY + 98.0f;
+            dl->AddRectFilled(ImVec2(barX, hpY), ImVec2(barX + barWidth, hpY + 6.0f),
+                IM_COL32(24, 24, 39, 230), 2.0f);
+            dl->AddRectFilled(ImVec2(barX, spY), ImVec2(barX + barWidth, spY + 5.0f),
+                IM_COL32(23, 21, 38, 225), 2.0f);
+            ImU32 hpColor = hpFraction < 0.25f
+                ? IM_COL32(238, 88, 108, 245)
+                : IM_COL32(217, 205, 237, 240);
+            dl->AddRectFilled(ImVec2(barX, hpY), ImVec2(barX + barWidth * hpFraction, hpY + 6.0f),
+                hpColor, 2.0f);
+            dl->AddRectFilled(ImVec2(barX, spY), ImVec2(barX + barWidth * spFraction, spY + 5.0f),
+                IM_COL32(180, 119, 241, 255), 2.0f);
+            dl->AddCircleFilled(ImVec2(barX + barWidth * hpFraction, hpY + 3.0f), 3.5f, hpColor, 10);
+            dl->AddCircleFilled(ImVec2(barX + barWidth * spFraction, spY + 2.5f), 3.0f,
+                IM_COL32(211, 172, 255, 235), 10);
+
+            ++allyIndex;
+            if (allyIndex >= 2) break;
         }
     }
     ImGui::End();
@@ -733,12 +842,12 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
     ImGui::End();
     ImGui::PopStyleColor();
 
-    float commandWidth = std::min(520.0f, (float)screenWidth * 0.48f);
+    float commandWidth = std::min(360.0f, (float)screenWidth * 0.34f);
     ImGui::SetNextWindowPos(
-        ImVec2((float)screenWidth - commandWidth - 22.0f, (float)screenHeight - 220.0f),
+        ImVec2((float)screenWidth - commandWidth - 34.0f, (float)screenHeight * 0.5f - 245.0f),
         ImGuiCond_Always
     );
-    ImGui::SetNextWindowSize(ImVec2(commandWidth, 400.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(commandWidth, 490.0f), ImGuiCond_Always);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -755,59 +864,168 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
 
         //player縺ｮ繧ｿ繝ｼ繝ｳ縺ｮUI
         else if (activeChar && activeChar->isAlly == 1) {
-            ImGui::Text("Action Points: %d / %d", currentPoints, maxPoints);
-            float pointsFraction = (float)currentPoints / (float)maxPoints;
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.7f, 0.1f, 1.0f));
-            ImGui::ProgressBar(pointsFraction, ImVec2(-1.0f, 6.0f), "");
-            ImGui::PopStyleColor();
-            ImGui::Spacing();
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            const ImVec2 origin = ImGui::GetWindowPos();
+            const float rowHeight = 68.0f;
+            const float menuTop = 62.0f;
+            const float textX = 126.0f;
+            const float nodeX = 88.0f;
+            const ImU32 violet = IM_COL32(193, 139, 255, 255);
+            const ImU32 pale = IM_COL32(239, 229, 255, 255);
 
-            float fullWidth = commandWidth - 32.0f;
-            float btnHeight = 65.0f; // 蟆代＠鬮倥＆繧呈椛縺医※蜈ｨ菴薙ｒ蜿弱ａ繧・
-            float centerX = (commandWidth - fullWidth) / 2.0f;
+            // A soft dark backing keeps the labels readable over bright 3D scenery.
+            const ImVec2 panelMin(origin.x + 38.0f, origin.y + 8.0f);
+            const ImVec2 panelMax(origin.x + commandWidth - 5.0f, origin.y + menuTop + rowHeight * 5.0f + 8.0f);
+            dl->AddRectFilledMultiColor(
+                panelMin, panelMax,
+                IM_COL32(2, 5, 13, 28),
+                IM_COL32(3, 6, 16, 178),
+                IM_COL32(3, 6, 16, 156),
+                IM_COL32(2, 5, 13, 18));
+            dl->AddLine(
+                ImVec2(panelMax.x - 1.0f, panelMin.y + 24.0f),
+                ImVec2(panelMax.x - 1.0f, panelMax.y - 24.0f),
+                IM_COL32(176, 132, 225, 52), 1.0f);
 
-            // --- 1. Ultimate (MAX繝昴う繝ｳ繝医〒逋ｺ蜍募庄閭ｽ) ---
-            bool canUseUltimate = (currentPoints >= maxPoints);
-            if (!canUseUltimate) ImGui::BeginDisabled();
+            dl->AddText(ImVec2(origin.x + textX, origin.y + 22.0f),
+                IM_COL32(185, 169, 208, 220),
+                ("AP  " + std::to_string(currentPoints) + " / " + std::to_string(maxPoints)).c_str());
+            dl->AddLine(ImVec2(origin.x + nodeX, origin.y + menuTop - 18.0f),
+                ImVec2(origin.x + nodeX + 18.0f, origin.y + menuTop + rowHeight * 5.0f),
+                IM_COL32(150, 103, 205, 60), 1.0f);
 
-            ImGui::SetCursorPosX(centerX);
-            DrawStyledButton("Ultimate", "Use all points to unleash Ultimate!",
-                ImVec4(0.62f, 0.42f, 0.12f, 1.0f), fullWidth, btnHeight, [&]() {
-                    currentPoints = 0; // 繝昴う繝ｳ繝亥・豸郁ｲｻ
-                    chooseCommand(BattleCommand::Ultimate);
-                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-                });
+            // Faint fragments and particles behind the command list.
+            const float time = (float)ImGui::GetTime();
+            for (int i = 0; i < 18; ++i) {
+                float px = origin.x + 32.0f + fmodf((float)(i * 67), commandWidth + 100.0f);
+                float py = origin.y + 18.0f + fmodf((float)(i * 43) + sinf(time * 0.7f + i) * 9.0f, 420.0f);
+                float pulse = 0.45f + 0.35f * sinf(time * 1.7f + (float)i * 0.8f);
+                ImU32 particleColor = IM_COL32(200, 163, 255, (int)(38.0f + 70.0f * pulse));
+                dl->AddCircleFilled(ImVec2(px, py), (i % 4 == 0) ? 1.8f : 1.0f, particleColor, 8);
+                if (i % 5 == 0) {
+                    dl->AddLine(ImVec2(px - 8.0f, py), ImVec2(px + 8.0f, py), particleColor, 0.8f);
+                    dl->AddLine(ImVec2(px, py - 8.0f), ImVec2(px, py + 8.0f), particleColor, 0.8f);
+                }
+            }
+            dl->AddTriangleFilled(
+                ImVec2(origin.x + commandWidth - 36.0f, origin.y + 78.0f),
+                ImVec2(origin.x + commandWidth + 12.0f, origin.y + 54.0f),
+                ImVec2(origin.x + commandWidth - 6.0f, origin.y + 112.0f),
+                IM_COL32(153, 99, 215, 28));
+            dl->AddTriangle(
+                ImVec2(origin.x + commandWidth - 62.0f, origin.y + 328.0f),
+                ImVec2(origin.x + commandWidth + 8.0f, origin.y + 294.0f),
+                ImVec2(origin.x + commandWidth - 18.0f, origin.y + 375.0f),
+                IM_COL32(190, 135, 247, 70), 1.0f);
 
-            if (!canUseUltimate) ImGui::EndDisabled();
+            const char* labels[] = { u8"攻撃", u8"スキル", u8"アイテム", u8"防御", u8"逃走" };
+            const char* subLabels[] = { "ATTACK", "SKILL", "ITEM", "GUARD", "ESCAPE" };
+            const bool enabled[] = {
+                true,
+                currentPoints >= 1,
+                false,
+                true,
+                false
+            };
 
-            ImGui::Spacing();
+            for (int i = 0; i < 5; ++i) {
+                const float y = menuTop + rowHeight * (float)i;
+                ImGui::SetCursorPos(ImVec2(55.0f, y));
+                ImGui::PushID(i);
+                ImGui::InvisibleButton("##BattleCommand", ImVec2(commandWidth - 70.0f, 58.0f));
+                const bool hovered = ImGui::IsItemHovered() && enabled[i];
+                const bool clicked = ImGui::IsItemClicked() && enabled[i];
+                ImGui::PopID();
 
-            // 
-            float halfWidth = (fullWidth - 8.0f) / 2.0f;
-            ImGui::SetCursorPosX(centerX);
+                ImU32 mainColor = enabled[i]
+                    ? (hovered ? IM_COL32_WHITE : IM_COL32(228, 226, 238, 235))
+                    : IM_COL32(139, 136, 153, 125);
+                ImU32 subColor = hovered
+                    ? IM_COL32(222, 190, 255, 255)
+                    : IM_COL32(155, 151, 177, enabled[i] ? 185 : 95);
 
-            // Basic Attack 
-            DrawStyledButton("Basic\nAttack", "Deals physical damage",
-                ImVec4(0.18f, 0.24f, 0.30f, 1.0f), halfWidth, btnHeight, [&]() {
-                    currentPoints = std::min(maxPoints, currentPoints + 1); // 貅懊∪繧・
+                if (hovered) {
+                    const ImVec2 arrow(origin.x + textX - 22.0f, origin.y + y + 23.0f);
+                    dl->AddRectFilledMultiColor(
+                        ImVec2(origin.x + 72.0f, arrow.y - 24.0f),
+                        ImVec2(origin.x + commandWidth - 14.0f, arrow.y + 28.0f),
+                        IM_COL32(102, 53, 166, 18),
+                        IM_COL32(120, 64, 188, 104),
+                        IM_COL32(76, 41, 130, 76),
+                        IM_COL32(93, 48, 151, 14));
+                    dl->AddTriangleFilled(
+                        ImVec2(origin.x - commandWidth * 0.52f, arrow.y + 53.0f),
+                        ImVec2(origin.x + textX + 196.0f, arrow.y - 17.0f),
+                        ImVec2(origin.x + textX + 142.0f, arrow.y + 31.0f),
+                        IM_COL32(127, 70, 191, 18));
+                    dl->AddLine(ImVec2(origin.x - commandWidth * 0.82f, arrow.y + 42.0f),
+                        ImVec2(arrow.x - 15.0f, arrow.y), IM_COL32(171, 101, 238, 150), 1.2f);
+                    dl->AddLine(ImVec2(origin.x - commandWidth * 0.55f, arrow.y - 19.0f),
+                        ImVec2(arrow.x - 15.0f, arrow.y), IM_COL32(211, 156, 255, 125), 1.0f);
+
+                    // Selected command marker: luminous right-facing arrow.
+                    dl->AddCircleFilled(arrow, 15.0f, IM_COL32(136, 73, 204, 36), 20);
+                    dl->AddTriangleFilled(
+                        ImVec2(arrow.x - 12.0f, arrow.y - 9.0f),
+                        ImVec2(arrow.x - 12.0f, arrow.y + 9.0f),
+                        ImVec2(arrow.x + 2.0f, arrow.y),
+                        IM_COL32(220, 186, 255, 225));
+                    dl->AddTriangle(
+                        ImVec2(arrow.x - 7.0f, arrow.y - 13.0f),
+                        ImVec2(arrow.x - 7.0f, arrow.y + 13.0f),
+                        ImVec2(arrow.x + 11.0f, arrow.y),
+                        IM_COL32_WHITE, 1.5f);
+                    dl->AddLine(
+                        ImVec2(arrow.x - 20.0f, arrow.y),
+                        ImVec2(arrow.x - 7.0f, arrow.y),
+                        IM_COL32(224, 193, 255, 210), 2.0f);
+
+                    dl->AddLine(ImVec2(arrow.x + 8.0f, arrow.y - 2.0f),
+                        ImVec2(origin.x + commandWidth - 34.0f, arrow.y - 16.0f),
+                        IM_COL32(190, 125, 248, 90), 0.8f);
+                    dl->AddLine(
+                        ImVec2(origin.x + textX + 8.0f, arrow.y + 27.0f),
+                        ImVec2(origin.x + commandWidth - 32.0f, arrow.y + 27.0f),
+                        IM_COL32(205, 155, 255, 185), 1.4f);
+                }
+                else {
+                    dl->AddRect(ImVec2(origin.x + nodeX - 3.0f, origin.y + y + 21.0f),
+                        ImVec2(origin.x + nodeX + 3.0f, origin.y + y + 27.0f),
+                        IM_COL32(161, 130, 197, enabled[i] ? 100 : 38), 0.0f, 0, 1.0f);
+                }
+
+                char order[4];
+                snprintf(order, sizeof(order), "%02d", i + 1);
+                dl->AddText(ImVec2(origin.x + 50.0f, origin.y + y + 20.0f),
+                    IM_COL32(129, 118, 149, enabled[i] ? 100 : 45), order);
+                if (hovered) {
+                    dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.72f,
+                        ImVec2(origin.x + textX + 11.5f, origin.y + y + 7.5f),
+                        IM_COL32(103, 46, 166, 145), labels[i]);
+                }
+                dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.86f,
+                    ImVec2(origin.x + textX + (hovered ? 10.0f : 0.0f), origin.y + y + 6.0f),
+                    mainColor, labels[i]);
+                dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.65f,
+                    ImVec2(origin.x + textX + 2.0f + (hovered ? 10.0f : 0.0f), origin.y + y + 38.0f),
+                    subColor, subLabels[i]);
+
+                if (!clicked) continue;
+                Character* target = markedTarget ? markedTarget : getRandomAliveTarget(0);
+                if (i == 0) {
+                    currentPoints = std::min(maxPoints, currentPoints + 1);
                     chooseCommand(BattleCommand::BasicAttack);
-                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-                });
-
-            ImGui::SameLine();
-
-            // Combat Skill (繝昴う繝ｳ繝医ｒ1豸郁ｲｻ)
-            bool canUseSkill = (currentPoints >= 1);
-            if (!canUseSkill) ImGui::BeginDisabled();
-
-            DrawStyledButton("Skill ", "Uses 1 AP to attack",
-                ImVec4(0.12f, 0.42f, 0.58f, 1.0f), halfWidth, btnHeight, [&]() {
-                    currentPoints = std::max(0, currentPoints - 1); // 豸郁ｲｻ
+                    executeCommand(activeChar, target);
+                }
+                else if (i == 1) {
+                    currentPoints = std::max(0, currentPoints - 1);
                     chooseCommand(BattleCommand::Skill);
-                    executeCommand(activeChar, markedTarget ? markedTarget : getRandomAliveTarget(0));
-                });
-
-            if (!canUseSkill) ImGui::EndDisabled();
+                    executeCommand(activeChar, target);
+                }
+                else if (i == 3) {
+                    executeGuard(activeChar);
+                }
+            }
         }
         else if (activeChar) {
             ImGui::TextColored(ImVec4(0.95f, 0.38f, 0.34f, 1.0f), "%s", activeChar->name.c_str());

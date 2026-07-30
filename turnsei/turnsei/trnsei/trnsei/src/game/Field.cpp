@@ -108,10 +108,8 @@ namespace
                 for (const char* ext : exts) {
                     std::string path = std::string(root) + name + ext;
                     if (FileExists(path) && playerModel.load(path)) {
-                        // アニメーションが含まれていなければ別FBXから補完
-                        if (!playerModel.hasAnimation()) {
-                            TryLoadAnimations(std::string(root));
-                        }
+                        // Base FBXに別のアニメーションがあっても、外部の歩行/待機クリップを追加する。
+                        TryLoadAnimations(std::string(root));
                         return;
                     }
                 }
@@ -386,31 +384,28 @@ void FieldUpdate(CombatSystem& combatSystem)
     bool moving = player.isMoving();
     bool hasPlayerWalkClip = false;
     if (playerModel.isLoaded() && playerModel.hasAnimation()) {
-        size_t clipCount = playerModel.getAnimationCount();
+        const int walkIdx = playerModel.findAnimationByKeywords({
+            "walk","run","locomotion","move","jog","sprint","forward","go"
+        });
+        const int idleIdx = playerModel.findAnimationByKeywords({
+            "idle","stand","rest","wait","pose"
+        });
+
         if (moving) {
-            // キーワードで歩きアニメを探す
-            int walkIdx = playerModel.findAnimationByKeywords({
-                "walk","run","locomotion","move","jog","sprint","forward","go"
-            });
             if (walkIdx >= 0) {
                 playerModel.playAnimationByIndex((size_t)walkIdx);
                 hasPlayerWalkClip = true;
-            } else if (clipCount >= 2) {
-                // 2クリップ以上あれば2番目(インデックス1)が歩き想定
-                playerModel.playAnimationByIndex(1);
-                hasPlayerWalkClip = true;
-            } else {
-                // 1クリップのみ: それを使う
-                playerModel.playAnimationByIndex(0);
-                hasPlayerWalkClip = true;
             }
-        } else {
-            // アイドルアニメを探す
-            int idleIdx = playerModel.findAnimationByKeywords({"idle","stand","rest","wait","pose"});
+            else if (idleIdx >= 0) {
+                // 名前不明のクリップを歩行扱いしない。待機姿勢に手続き型の歩行を重ねる。
+                playerModel.playAnimationByIndex((size_t)idleIdx);
+            }
+        }
+        else {
             if (idleIdx >= 0) {
                 playerModel.playAnimationByIndex((size_t)idleIdx);
-            } else {
-                // アイドルが見つからなければ最初のクリップ(歩きと別々なら0=idle想定)
+            }
+            else if (playerModel.getAnimationCount() > 0) {
                 playerModel.playAnimationByIndex(0);
             }
         }

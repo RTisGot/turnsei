@@ -26,18 +26,18 @@
 
 namespace
 {
-    std::string DirectoryOf(const std::string& path)
+    std::string DirectoryOf(const std::string& path)//ファイルパスを受け取る
     {
-        size_t slash = path.find_last_of("/\\");
-        return slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
+        size_t slash = path.find_last_of("/\\"); //　/ または \が最後にあるか探す
+        return slash == std::string::npos ? std::string() : path.substr(0, slash + 1);//見つからなかった場合//見つかった場合
     }
 
     bool FileExistsLocal(const std::string& path)
     {
-        FILE* file = nullptr;
-        fopen_s(&file, path.c_str(), "rb");
+        FILE* file = nullptr;              //ポインタを作る
+        fopen_s(&file, path.c_str(), "rb");//fileを開く//読み込み専用
         if (!file) return false;
-        fclose(file);
+        fclose(file);                      //fileを閉じる
         return true;
     }
 
