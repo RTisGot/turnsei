@@ -1,1 +1,6 @@
-D:\Turnsei\turnsei\turnsei\trnsei\trnsei\x64\Debug\trnsei_obj_v2\trnsei.vcxproj.Up2Date
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\assimp-vc143-mtd.dll
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\poly2tri.dll
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\minizip.dll
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\zd.dll
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\kubazip.dll
+D:\Turnsei\turnsei\turnsei\trnsei\x64\Debug\pugixml.dll

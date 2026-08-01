@@ -35,7 +35,8 @@ namespace
     bool g_enemyModelLoadAttempted = false;
     double g_previousBattleAnimationTime = 0.0;
 
-    //file縺悟ｭ伜惠縺吶ｋ縺九←縺・°
+    // 任意アセットが見つからなくても例外にはせず、代替形状で戦闘を継続する。
+    // 制作途中のビルドでもゲーム進行を止めないための方針である。
     bool FileExists(const std::string& path)
     {
         std::ifstream file(path, std::ios::binary);
@@ -43,13 +44,15 @@ namespace
     }
 
 
-    //謨ｵmodel隱ｭ縺ｿ霎ｼ縺ｿ逕ｨ
+    // Enemy1～Enemy5を初回だけ読み込む。欠番はスロット0を使用し、
+    // 描画ループ内でファイル探索を繰り返さない。
     void LoadBattleEnemyModels()
     {
         if (g_enemyModelLoadAttempted) return;
         g_enemyModelLoadAttempted = true;
 
-        //繝代せ謗｢邏｢
+        // Visual Studio起動と実行ファイル直接起動で作業ディレクトリが異なるため、
+        // 両方のResource候補を順番に探索する。
         const char* extensions[] = { ".fbx", ".obj", ".gltf", ".glb" };
         const char* roots[] = { "Resource/", "../trnsei/Resource/" };
         const char* names[] = { "Enemy" };
@@ -78,7 +81,8 @@ namespace
         }
     }
 
-    //繧ｭ繝｣繝ｩ繧ｯ繧ｿ繝ｼ繝｢繝・Ν隱ｭ縺ｿ霎ｼ縺ｿ逕ｨ
+    // 修正済みCharacter_Gameplayを優先して読み込み、その60ボーンへ
+    // 歩行、戦闘待機、攻撃の外部クリップを追加する。
     void LoadBattlePlayerModel()
     {
         if (g_playerModelLoadAttempted) return;
@@ -86,19 +90,40 @@ namespace
 
         const char* extensions[] = { ".fbx", ".obj", ".gltf", ".glb" };
         const char* roots[] = { "Resource/", "../trnsei/Resource/" };
-        const char* names[] = { "Character" };
+        const char* names[] = { "Character_Gameplay", "Character" };
 
         for (const char* root : roots) {
             for (const char* name : names) {
                 for (const char* extension : extensions) {
                     std::string path = std::string(root) + name + extension;
-                    if (FileExists(path) && g_playerModel.load(path)) return;
+                    if (FileExists(path) && g_playerModel.load(path)) {
+                        if (std::string(name) == "Character_Gameplay") {
+                            const std::string walkJson =
+                                std::string(root) + "Character_Walk.json";
+                            const std::string idleJson =
+                                std::string(root) + "Character_CombatIdle.json";
+                            const std::string attackJson =
+                                std::string(root) + "Character_Attack.json";
+                            if (FileExists(walkJson))
+                                g_playerModel.loadAnimationJson(walkJson);
+                            if (FileExists(idleJson))
+                                g_playerModel.loadAnimationJson(idleJson);
+                            if (FileExists(attackJson))
+                                g_playerModel.loadAnimationJson(attackJson);
+                            if (!g_playerModel.playAnimationByName("Combat_Idle")) {
+                                g_playerModel.playAnimationByName("Walk");
+                                g_playerModel.updateAnimation(0.11f);
+                            }
+                        }
+                        return;
+                    }
                 }
             }
         }
     }
 
-    //繧ｷ繧ｧ繝ｼ繝繝ｼ繧剃ｽ懈・繧ｳ繝ｳ繝代う繝ｫ縺吶ｋ
+    // 戦闘ではフィールドと異なる構図・補助光を使用するため、
+    // 専用シェーダーをこのレンダラー内で管理する。
     GLuint CompileBattleShader(GLenum type, const char* source)
     {
         GLuint shader = glCreateShader(type);
@@ -144,12 +169,19 @@ uniform int outlineMode;
 uniform int useVertexColor;
 uniform int useTexture;
 uniform float opacity;
+uniform float materialRoughness;
+uniform float materialMetallic;
+uniform vec3 materialEmission;
 uniform sampler2D diffuseTexture;
 in vec3 vNormal;
 in vec3 vColor;
 in vec3 vWorldPos;
 in vec2 vTexCoords;
 out vec4 FragColor;
+vec3 ACESFilm(vec3 x) {
+    return clamp((x * (2.51 * x + 0.03)) /
+                 (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
 void main()
 {
     if (outlineMode == 1) {
@@ -172,16 +204,19 @@ void main()
     float ndl = max(dot(n, l), 0.0);
     float fillLight = max(dot(n, fill), 0.0);
     float hemi = max(n.y, 0.0);
-    float lit = max(max(ndl, hemi * 0.58), fillLight * 0.28);
-    float band = 0.44;
-    if (lit > 0.88) band = 1.26;
-    else if (lit > 0.62) band = 1.00;
-    else if (lit > 0.32) band = 0.68;
+    float lit = max(max(ndl, hemi * 0.54), fillLight * 0.30);
+    float softBand = smoothstep(0.24, 0.42, lit) * 0.32
+                   + smoothstep(0.52, 0.70, lit) * 0.28
+                   + smoothstep(0.82, 0.94, lit) * 0.24;
 
     float rim = pow(1.0 - max(dot(n, viewDir), 0.0), 2.05);
     float fresnelLine = smoothstep(0.32, 0.82, rim);
     float backRim = smoothstep(0.20, 0.78, pow(1.0 - max(dot(n, normalize(vec3(-0.55, 0.15, -0.82))), 0.0), 2.6));
-    float spec = pow(max(dot(n, halfDir), 0.0), 96.0) * smoothstep(0.56, 0.82, lit);
+    float rough = clamp(materialRoughness, 0.05, 1.0);
+    float metal = clamp(materialMetallic, 0.0, 1.0);
+    float specPower = mix(220.0, 18.0, rough * rough);
+    float spec = pow(max(dot(n, halfDir), 0.0), specPower)
+               * smoothstep(0.44, 0.76, lit);
     float glint = pow(max(dot(n, normalize(viewDir + vec3(-0.6, 1.0, 0.25))), 0.0), 180.0);
     vec3 baseColor = useVertexColor == 1 ? vColor : color;
     if (useTexture == 1) {
@@ -200,21 +235,24 @@ void main()
         return;
     }
 
-    vec3 shadowTint = vec3(0.13, 0.16, 0.30);
-    vec3 midTint = vec3(0.72, 0.82, 1.00);
-    vec3 warmLight = vec3(1.18, 1.08, 0.94);
-    vec3 shaded = mix(baseColor * shadowTint, baseColor * midTint, min(band, 0.92));
-    shaded = mix(shaded, baseColor * warmLight, smoothstep(0.92, 1.24, band));
-    shaded += vec3(0.35, 0.68, 1.00) * fresnelLine * 0.46;
-    shaded += vec3(0.82, 0.46, 1.00) * backRim * 0.18;
-    shaded += vec3(1.00, 0.92, 0.70) * spec * 0.58;
+    vec3 shadowTint = vec3(0.20, 0.27, 0.43);
+    vec3 midTint = vec3(0.76, 0.86, 1.00);
+    vec3 warmLight = vec3(1.16, 1.08, 0.96);
+    vec3 shaded = baseColor * mix(shadowTint, midTint, softBand);
+    shaded = mix(shaded, baseColor * warmLight,
+                 smoothstep(0.70, 0.96, lit) * 0.72);
+    shaded += vec3(0.26, 0.62, 0.96) * fresnelLine * 0.38;
+    shaded += vec3(0.72, 0.42, 0.92) * backRim * 0.13;
+    vec3 specTint = mix(vec3(1.00, 0.91, 0.76), baseColor, metal);
+    shaded += specTint * spec * mix(0.34, 0.82, metal);
     shaded += vec3(0.90, 0.96, 1.00) * glint * 0.22;
+    shaded += materialEmission * 2.4;
     float depthFog = smoothstep(8.0, 24.0, length(cameraPos - vWorldPos));
-    float minlight =0.4;
     shaded = mix(shaded, vec3(0.055, 0.075, 0.12), depthFog * 0.18);
     shaded = mix(vec3(dot(shaded, vec3(0.299, 0.587, 0.114))), shaded, 1.20);
-    shaded = pow(max(shaded, vec3(0.0)), vec3(0.96));
-    shaded = max(shaded, baseColor * minlight);
+    shaded = ACESFilm(max(shaded, vec3(0.0)) * 1.08);
+    shaded = pow(shaded, vec3(1.0 / 2.2));
+    shaded = max(shaded, pow(baseColor * 0.18, vec3(1.0 / 2.2)));
     FragColor = vec4(shaded, opacity);
 }
 )";
@@ -228,7 +266,7 @@ void main()
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
 
-        //遶区婿菴薙・鬆らせ繝・・繧ｿ
+        // インポートモデルがない場合に備え、確認用の代替立方体を生成する。
         const float cubeVertices[] = {
             -0.5f, 0.0f, -0.5f,  0.0f,  0.0f, -1.0f,
              0.5f, 0.0f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -336,6 +374,81 @@ void main()
         const float c3 = c1 + 1.0f;
         return 1.0f + c3 * std::pow(value - 1.0f, 3.0f) + c1 * std::pow(value - 1.0f, 2.0f);
     }
+
+    // 戦闘用の簡易剣を既存の立方体メッシュから組み立てる。
+    // 専用モデルの読込失敗で攻撃自体が見えなくなることを避けるため、
+    // 刃・鍔・柄を同じ軽量な描画経路で描く。
+    void DrawSwordPart(const glm::mat4& transform, const glm::vec3& color,
+        float metallic, float roughness, const glm::vec3& emission = glm::vec3(0.0f))
+    {
+        glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1,
+            GL_FALSE, glm::value_ptr(transform));
+        glUniform3fv(glGetUniformLocation(g_battleShader, "color"), 1,
+            glm::value_ptr(color));
+        glUniform1f(glGetUniformLocation(g_battleShader, "materialMetallic"), metallic);
+        glUniform1f(glGetUniformLocation(g_battleShader, "materialRoughness"), roughness);
+        glUniform3fv(glGetUniformLocation(g_battleShader, "materialEmission"), 1,
+            glm::value_ptr(emission));
+        glUniform1i(glGetUniformLocation(g_battleShader, "useVertexColor"), 0);
+        glUniform1i(glGetUniformLocation(g_battleShader, "useTexture"), 0);
+        glBindVertexArray(g_battleCubeVao);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+    }
+
+    // 右手付近を支点にし、身体の攻撃クリップと同じ時間で剣を振る。
+    // 11Fのヒット時に刃が敵方向へ最も深く入るため、見た目と判定がずれない。
+    void DrawBattleSword(const glm::vec3& actorPosition, float attackTime, bool attacking)
+    {
+        float slash = 0.0f;
+        float thrust = 0.0f;
+        if (attacking) {
+            constexpr float windupEnd = 8.0f / 30.0f;
+            constexpr float hitTime = 11.0f / 30.0f;
+            constexpr float recoveryEnd = 43.0f / 30.0f;
+            if (attackTime < windupEnd) {
+                float t = std::max(0.0f, attackTime / windupEnd);
+                slash = glm::mix(0.0f, -1.05f, t * t * (3.0f - 2.0f * t));
+            }
+            else if (attackTime < hitTime) {
+                float t = (attackTime - windupEnd) / (hitTime - windupEnd);
+                t = t * t * (3.0f - 2.0f * t);
+                slash = glm::mix(-1.05f, 1.22f, t);
+                thrust = glm::mix(0.0f, -0.72f, t);
+            }
+            else {
+                float t = (attackTime - hitTime) / (recoveryEnd - hitTime);
+                t = std::max(0.0f, std::min(t, 1.0f));
+                t = t * t * (3.0f - 2.0f * t);
+                slash = glm::mix(1.22f, 0.0f, t);
+                thrust = glm::mix(-0.72f, 0.0f, t);
+            }
+        }
+
+        glm::mat4 sword(1.0f);
+        sword = glm::translate(sword, actorPosition + glm::vec3(0.72f, 2.02f, -0.04f + thrust));
+        sword = glm::rotate(sword, glm::radians(-13.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        sword = glm::rotate(sword, glm::radians(-18.0f) + slash, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        // 各パーツは柄元を共通原点にする。刃の中心を上へずらすことで
+        // 回転しても鍔から離れず、一本の剣として追従する。
+        glm::mat4 blade = glm::translate(sword, glm::vec3(0.0f, 0.78f, 0.0f));
+        blade = glm::scale(blade, glm::vec3(0.105f, 1.42f, 0.055f));
+        DrawSwordPart(blade, glm::vec3(0.66f, 0.78f, 0.88f), 0.88f, 0.20f,
+            attacking ? glm::vec3(0.025f, 0.055f, 0.08f) : glm::vec3(0.0f));
+
+        glm::mat4 guard = glm::translate(sword, glm::vec3(0.0f, 0.04f, 0.0f));
+        guard = glm::scale(guard, glm::vec3(0.62f, 0.105f, 0.13f));
+        DrawSwordPart(guard, glm::vec3(0.30f, 0.20f, 0.48f), 0.72f, 0.28f);
+
+        glm::mat4 grip = glm::translate(sword, glm::vec3(0.0f, -0.34f, 0.0f));
+        grip = glm::scale(grip, glm::vec3(0.14f, 0.43f, 0.14f));
+        DrawSwordPart(grip, glm::vec3(0.075f, 0.055f, 0.10f), 0.18f, 0.72f);
+
+        // 後続のキャラクター描画へ武器用PBR値を漏らさない。
+        glUniform1f(glGetUniformLocation(g_battleShader, "materialMetallic"), 0.0f);
+        glUniform1f(glGetUniformLocation(g_battleShader, "materialRoughness"), 0.62f);
+        glUniform3f(glGetUniformLocation(g_battleShader, "materialEmission"), 0.0f, 0.0f, 0.0f);
+    }
 }
 
 void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int screenHeight)
@@ -346,7 +459,37 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         ? static_cast<float>(currentAnimationTime - g_previousBattleAnimationTime)
         : 0.0f;
     g_previousBattleAnimationTime = currentAnimationTime;
-    g_playerModel.updateAnimation(animationDelta);
+
+    // Blender側で定義した攻撃イベントを秒へ変換する。
+    // 11Fでダメージを確定し、43Fを越えたら待機へ戻す。
+    constexpr float attackHitTime = 11.0f / 30.0f;
+    constexpr float attackDuration = 43.0f / 30.0f;
+    if (playerCommandAnimating) {
+        // 攻撃中も毎フレーム姿勢を更新し、経過時間をヒット判定と共有する。
+        g_playerModel.updateAnimation(animationDelta);
+        playerCommandAnimationTime += animationDelta;
+
+        // ヒットフレームを初めて跨いだ瞬間だけゲーム上の攻撃を確定する。
+        // フレーム落ちで11Fを飛び越えても、一度だけ実行される。
+        if (!playerCommandHitApplied &&
+            playerCommandAnimationTime >= attackHitTime) {
+            playerCommandHitApplied = true;
+            executeCommand(queuedPlayerAttacker, queuedPlayerTarget);
+        }
+        if (playerCommandAnimationTime >= attackDuration) {
+            // 攻撃に保持していた参照を破棄し、次のコマンドを受付可能にする。
+            playerCommandAnimating = false;
+            playerCommandHitApplied = false;
+            playerCommandAnimationTime = 0.0f;
+            queuedPlayerAttacker = nullptr;
+            queuedPlayerTarget = nullptr;
+            g_playerModel.playAnimationByName("Combat_Idle");
+        }
+    }
+    else {
+        // コマンド待機中はCombat_Idleをループ再生する。
+        g_playerModel.updateAnimation(animationDelta);
+    }
     for (ImportedModel& enemyModel : g_enemyModels) {
         enemyModel.updateAnimation(animationDelta);
     }
@@ -362,11 +505,11 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
     });
     const int enemyCount = static_cast<int>(fixedEnemyOrder.size());
 
-    // Cinematic over-the-shoulder composition:
-    // Keep the same framing while choosing a target. Target highlighting is UI-only.
+    // プレイヤー越しに敵陣を見せる戦闘用構図を作る。
+    // ターゲット選択中はUI表示だけを変え、カメラ構図は変化させない。
     const float cameraDrift = std::sin((float)currentAnimationTime * 0.32f);
-    // Keep one stable composition through player and enemy turns.
-    // Attacking must not flip the camera when activeChar changes.
+    // 味方ターンと敵ターンで同じカメラを維持する。
+    // activeCharが切り替わっても攻撃のたびに視点を反転させない。
     glm::vec3 cameraPosition(-8.1f + cameraDrift * 0.22f, 3.95f, 15.0f);
     glm::vec3 cameraTarget(0.57f, 1.48f, -0.9f);
     glm::mat4 view = glm::lookAt(
@@ -379,20 +522,23 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
 
     glViewport(0, 0, screenWidth, screenHeight);
     glEnable(GL_DEPTH_TEST);
+    // 戦闘専用の背景色を設定する。明るい水色では輪郭が背景へ埋もれるため、
+    // 青緑の暗部を基準にしてキャラクターのシルエットを読みやすくする。
+    glClearColor(0.035f, 0.075f, 0.095f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // 笏笏 繝輔ぅ繝ｼ繝ｫ繝峨・3D閭梧勹繧呈緒逕ｻ 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+    // フィールド描画を再利用し、遭遇地点の建物・水面・照明を戦闘背景へ残す。
     {
         glm::vec3 worldOrigin = GetBattleWorldOrigin();
-        // 繝舌ヨ繝ｫ繧ｫ繝｡繝ｩ縺ｨ蜷後§逶ｸ蟇ｾ繧ｪ繝輔そ繝・ヨ縺ｧ繝ｯ繝ｼ繝ｫ繝臥ｩｺ髢薙↓驟咲ｽｮ
+        // マップ全体を動かさず、遭遇地点の座標をカメラへ加算する。
         glm::vec3 bgCamPos = worldOrigin + cameraPosition;
         glm::vec3 bgCamTarget = worldOrigin + cameraTarget;
         glm::mat4 bgView = glm::lookAt(bgCamPos, bgCamTarget, glm::vec3(0,1,0));
         DrawSimpleMap(bgView, projection, bgCamPos);
-        // 豺ｱ蠎ｦ縺縺代け繝ｪ繧｢縺励※繝舌ヨ繝ｫ繧ｭ繝｣繝ｩ繧呈焔蜑阪↓謠冗判縺ｧ縺阪ｋ繧医≧縺ｫ縺吶ｋ
+        // 背景色は保持したまま深度だけを消去する。これにより遠景が
+        // 手前へ配置した戦闘キャラクターを隠すことを防ぐ。
         glClear(GL_DEPTH_BUFFER_BIT);
     }
-    // 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
     glUseProgram(g_battleShader);
     glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -403,6 +549,9 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
     glUniform1i(glGetUniformLocation(g_battleShader, "useVertexColor"), 0);
     glUniform1i(glGetUniformLocation(g_battleShader, "useTexture"), 0);
     glUniform1f(glGetUniformLocation(g_battleShader, "opacity"), 1.0f);
+    glUniform1f(glGetUniformLocation(g_battleShader, "materialRoughness"), 0.62f);
+    glUniform1f(glGetUniformLocation(g_battleShader, "materialMetallic"), 0.0f);
+    glUniform3f(glGetUniformLocation(g_battleShader, "materialEmission"), 0.0f, 0.0f, 0.0f);
 
     std::vector<std::pair<Character*, glm::vec3>> actorPositions;
     std::vector<std::pair<Character*, glm::vec3>> enemyPositions;
@@ -423,6 +572,31 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         glm::vec3 color;
         if (character->isAlly == 1) {
             position = glm::vec3(-2.45f, 0.0f, 8.0f);
+            if (playerCommandAnimating && character == queuedPlayerAttacker) {
+                // カメラを動かさず、キャラクターの位置だけで攻撃を演出する。
+                // 予備動作ではわずかに後退し、ヒット直前に高速で踏み込み、
+                // フォロースルーでは踏み込みより長い時間を使って定位置へ戻る。
+                float offsetZ = 0.0f;
+                const float anticipationEnd = 8.0f / 30.0f;
+                if (playerCommandAnimationTime < anticipationEnd) {
+                    const float t = playerCommandAnimationTime / anticipationEnd;
+                    offsetZ = 0.16f * std::sin(t * glm::pi<float>());
+                }
+                else if (playerCommandAnimationTime < attackHitTime) {
+                    float t = (playerCommandAnimationTime - anticipationEnd) /
+                              (attackHitTime - anticipationEnd);
+                    t = t * t * (3.0f - 2.0f * t);
+                    offsetZ = glm::mix(0.0f, -1.25f, t);
+                }
+                else {
+                    float t = (playerCommandAnimationTime - attackHitTime) /
+                              (attackDuration - attackHitTime);
+                    t = std::max(0.0f, std::min(t, 1.0f));
+                    t = t * t * (3.0f - 2.0f * t);
+                    offsetZ = glm::mix(-1.25f, 0.0f, t);
+                }
+                position.z += offsetZ;
+            }
             scale = g_playerModel.isLoaded()
                 ? glm::vec3(4.65f, 5.1f, 4.65f)
                 : glm::vec3(2.7f, 5.25f, 2.7f);
@@ -468,36 +642,39 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
         glDisable(GL_BLEND);
         glUniform1f(glGetUniformLocation(g_battleShader, "opacity"), 1.0f);
 
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
-        glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1, GL_FALSE, glm::value_ptr(outlineModel));
-        glUniform1i(glGetUniformLocation(g_battleShader, "outlineMode"), 1);
-        glUniform1i(glGetUniformLocation(g_battleShader, "useVertexColor"), 0);
-        glUniform1i(glGetUniformLocation(g_battleShader, "useTexture"), 0);
+        bool hasImportedModel = false;
         if (character->isAlly == 0) {
             int modelIndex = enemyIndex < 5 ? enemyIndex : 0;
             ImportedModel& importedModel = g_enemyModels[modelIndex].isLoaded()
                 ? g_enemyModels[modelIndex]
                 : g_enemyModels[0];
-            if (importedModel.isLoaded()) {
-                importedModel.draw();
-            }
-            else {
-                glBindVertexArray(g_battleCubeVao);
-                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-            }
+            hasImportedModel = importedModel.isLoaded();
         }
         else {
-            if (g_playerModel.isLoaded()) {
-                g_playerModel.draw();
+            hasImportedModel = g_playerModel.isLoaded();
+        }
+
+        // 背面拡張アウトラインは、面の向きが揃った閉じた形状でのみ安定する。
+        // 髪や服には両面・開放面があり、黒い複製形状が発生するため適用しない。
+        // このパスは閉じた代替立方体だけに限定する。
+        if (!hasImportedModel) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
+            glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1, GL_FALSE, glm::value_ptr(outlineModel));
+            glUniform1i(glGetUniformLocation(g_battleShader, "outlineMode"), 1);
+            glUniform1i(glGetUniformLocation(g_battleShader, "useVertexColor"), 0);
+            glUniform1i(glGetUniformLocation(g_battleShader, "useTexture"), 0);
+            if (character->isAlly == 0) {
+                glBindVertexArray(g_battleCubeVao);
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
             }
             else {
                 glBindVertexArray(g_battleCubeVao);
                 glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
             }
+            glDisable(GL_CULL_FACE);
         }
 
-        glDisable(GL_CULL_FACE);
         glUniformMatrix4fv(glGetUniformLocation(g_battleShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(glGetUniformLocation(g_battleShader, "outlineMode"), 0);
         if (character->isAlly == 0) {
@@ -525,6 +702,11 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
                 glBindVertexArray(g_battleCubeVao);
                 glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
             }
+
+            // 簡易剣はプレイヤーの描画直後に重ね、攻撃中だけでなく待機中も
+            // 右手側に保持する。これにより抜刀前後で突然出現・消失しない。
+            DrawBattleSword(position, playerCommandAnimationTime,
+                playerCommandAnimating && character == queuedPlayerAttacker);
         }
     }
     glBindVertexArray(0);
@@ -575,6 +757,23 @@ void CombatSystem::renderBattleScene(Character* activeChar, int screenWidth, int
             2.0f
         );
         drawList->AddRect(barMin, barMax, IM_COL32(255, 255, 255, 180), 3.0f);
+
+        if (enemy->maxTideguard > 0) {
+            float guardRatio = (float)enemy->tideguard / (float)enemy->maxTideguard;
+            ImVec2 guardMin(barMin.x, barMax.y + 4.0f);
+            ImVec2 guardMax(barMax.x, barMax.y + 10.0f);
+            drawList->AddRectFilled(guardMin, guardMax, IM_COL32(12, 30, 38, 225), 2.0f);
+            drawList->AddRectFilled(guardMin,
+                ImVec2(guardMin.x + (guardMax.x - guardMin.x) * guardRatio, guardMax.y),
+                enemy->isBroken ? IM_COL32(255, 224, 151, 255) : IM_COL32(72, 220, 215, 255), 2.0f);
+            ImVec2 labelPos(barMin.x, barMin.y - 22.0f);
+            std::string label = enemy->isBroken
+                ? std::string(u8"潮防崩壊  /  ") + enemy->affinity
+                : enemy->name + "  [ " + enemy->affinity + " ]";
+            drawList->AddText(ImGui::GetFont(), 15.0f, labelPos,
+                enemy->isBroken ? IM_COL32(255, 226, 160, 255) : IM_COL32(208, 243, 244, 245),
+                label.c_str());
+        }
 
     }
 
@@ -709,7 +908,7 @@ void CombatSystem::renderBattleCards(Character* activeChar, float screenWidth, f
     }
 }
 
-//action繝｡繝九Η繝ｼ逕ｨ縺ｮ髢｢謨ｰ
+// パーティ状態とコマンド一覧を、同じ基準座標を使うHUDレイヤーとして描画する。
 void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int screenHeight)
 {
     ImGuiWindowFlags hudFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
@@ -742,7 +941,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
             const float barWidth = 275.0f;
             const bool isActive = c == activeChar;
 
-            // Strong translucent backing for readability against any map color.
+            // 背景の明度に左右されず文字を読めるよう、濃い半透明パネルを敷く。
             dl->AddRectFilledMultiColor(
                 ImVec2(origin.x + 5.0f, origin.y + rowY),
                 ImVec2(origin.x + 465.0f, origin.y + rowY + 112.0f),
@@ -755,7 +954,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
                 ImVec2(origin.x + 465.0f, origin.y + rowY + 112.0f),
                 IM_COL32(168, 132, 215, isActive ? 115 : 55), 3.0f, 0, 1.0f);
 
-            // Circular sigil used as the visual anchor.
+            // キャラクター情報の視線誘導点として円形シジルを描画する。
             dl->AddCircleFilled(sigil, 31.0f, IM_COL32(28, 20, 47, 205), 32);
             dl->AddCircle(sigil, 30.0f, IM_COL32(199, 165, 239, isActive ? 225 : 135), 32, 1.5f);
             dl->AddCircle(sigil, 20.0f, IM_COL32(158, 126, 201, 155), 24, 1.1f);
@@ -771,7 +970,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
             dl->AddCircleFilled(sigil, 3.0f,
                 isActive ? IM_COL32(226, 197, 255, 245) : IM_COL32(154, 132, 185, 155), 12);
 
-            // Name and fine divider.
+            // キャラクター名と、HP領域を分ける細い区切り線を描画する。
             const float nameFontSize = 25.0f;
             const float statFontSize = 17.0f;
             ImFont* hudFont = ImGui::GetFont();
@@ -805,7 +1004,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
                 ImVec2(origin.x + 449.0f - spValueSize.x, origin.y + rowY + 76.0f),
                 IM_COL32(226, 202, 255, 245), spText);
 
-            // Thin luminous HP/SP lines like the reference HUD.
+            // HPとSPは数値を隠さない細い発光ラインとして描画する。
             const float hpY = origin.y + rowY + 60.0f;
             const float spY = origin.y + rowY + 98.0f;
             dl->AddRectFilled(ImVec2(barX, hpY), ImVec2(barX + barWidth, hpY + 6.0f),
@@ -862,7 +1061,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
             }
         }
 
-        //player縺ｮ繧ｿ繝ｼ繝ｳ縺ｮUI
+        // 味方・敵ターンでパネル位置を変えず、フェーズ切替時のHUDの跳ねを防ぐ。
         else if (activeChar && activeChar->isAlly == 1) {
             ImDrawList* dl = ImGui::GetWindowDrawList();
             const ImVec2 origin = ImGui::GetWindowPos();
@@ -873,7 +1072,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
             const ImU32 violet = IM_COL32(193, 139, 255, 255);
             const ImU32 pale = IM_COL32(239, 229, 255, 255);
 
-            // A soft dark backing keeps the labels readable over bright 3D scenery.
+            // 明るい3D背景の上でもラベルを読めるよう、柔らかい暗色面を敷く。
             const ImVec2 panelMin(origin.x + 38.0f, origin.y + 8.0f);
             const ImVec2 panelMax(origin.x + commandWidth - 5.0f, origin.y + menuTop + rowHeight * 5.0f + 8.0f);
             dl->AddRectFilledMultiColor(
@@ -894,7 +1093,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
                 ImVec2(origin.x + nodeX + 18.0f, origin.y + menuTop + rowHeight * 5.0f),
                 IM_COL32(150, 103, 205, 60), 1.0f);
 
-            // Faint fragments and particles behind the command list.
+            // コマンド文字より奥に、低コントラストの破片と粒子を描画する。
             const float time = (float)ImGui::GetTime();
             for (int i = 0; i < 18; ++i) {
                 float px = origin.x + 32.0f + fmodf((float)(i * 67), commandWidth + 100.0f);
@@ -963,7 +1162,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
                     dl->AddLine(ImVec2(origin.x - commandWidth * 0.55f, arrow.y - 19.0f),
                         ImVec2(arrow.x - 15.0f, arrow.y), IM_COL32(211, 156, 255, 125), 1.0f);
 
-                    // Selected command marker: luminous right-facing arrow.
+                    // 選択中の項目だけ、右向きの発光矢印で現在位置を示す。
                     dl->AddCircleFilled(arrow, 15.0f, IM_COL32(136, 73, 204, 36), 20);
                     dl->AddTriangleFilled(
                         ImVec2(arrow.x - 12.0f, arrow.y - 9.0f),
@@ -1011,16 +1210,37 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
                     subColor, subLabels[i]);
 
                 if (!clicked) continue;
+                // 攻撃の回収が終わるまで追加入力を無視し、二重実行を防ぐ。
+                if (playerCommandAnimating) continue;
+
+                // 明示選択がなければ、生存している敵から有効な対象を補完する。
                 Character* target = markedTarget ? markedTarget : getRandomAliveTarget(0);
                 if (i == 0) {
+                    // 通常攻撃はAPを1回復し、攻撃クリップの11Fまで処理を保留する。
                     currentPoints = std::min(maxPoints, currentPoints + 1);
                     chooseCommand(BattleCommand::BasicAttack);
-                    executeCommand(activeChar, target);
+                    if (target && g_playerModel.playAnimationByName("Basic_Attack")) {
+                        playerCommandAnimating = true;
+                        playerCommandHitApplied = false;
+                        playerCommandAnimationTime = 0.0f;
+                        queuedPlayerAttacker = activeChar;
+                        queuedPlayerTarget = target;
+                    }
+                    else executeCommand(activeChar, target);
                 }
                 else if (i == 1) {
+                    // 現段階ではスキルも同じ身体攻撃を使う。専用クリップ追加時は
+                    // ここで再生名とヒット時刻を差し替えられる。
                     currentPoints = std::max(0, currentPoints - 1);
                     chooseCommand(BattleCommand::Skill);
-                    executeCommand(activeChar, target);
+                    if (target && g_playerModel.playAnimationByName("Basic_Attack")) {
+                        playerCommandAnimating = true;
+                        playerCommandHitApplied = false;
+                        playerCommandAnimationTime = 0.0f;
+                        queuedPlayerAttacker = activeChar;
+                        queuedPlayerTarget = target;
+                    }
+                    else executeCommand(activeChar, target);
                 }
                 else if (i == 3) {
                     executeGuard(activeChar);
@@ -1047,7 +1267,7 @@ void CombatSystem::renderActionMenu(Character* activeChar, int screenWidth, int 
     ImGui::PopStyleColor(2);
 }
 
-//繝懊ち繝ｳ縺ｮ繧ｹ繧ｿ繧､繝ｫ繧貞､峨∴繧矩未謨ｰ
+// ImGuiのPush/Popを必ず対にしながら、共通ボタンの配色と角丸を適用する。
 void CombatSystem::DrawStyledButton(const char* label, const char* desc, ImVec4 color, float width, float height, std::function<void()> onClick) {
     ImVec4 hoveredColor = ImVec4(color.x + 0.1f, color.y + 0.1f, color.z + 0.1f, 1.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, color);

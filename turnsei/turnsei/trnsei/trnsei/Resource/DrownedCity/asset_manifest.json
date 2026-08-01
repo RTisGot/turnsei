@@ -1,0 +1,235 @@
+{
+  "kit": "TIDEGLASS_FC01",
+  "assets": [
+    {
+      "name": "SM_FC01_Wall_Window_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Wall_Window_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Wall_Window_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Wall_Window_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 9
+    },
+    {
+      "name": "SM_FC01_Structure_Column_Damaged_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Structure_Column_Damaged_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Structure_Column_Damaged_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Structure_Column_Damaged_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 10
+    },
+    {
+      "name": "SM_FC01_Structure_Slab_Broken_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Structure_Slab_Broken_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Structure_Slab_Broken_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Structure_Slab_Broken_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 8
+    },
+    {
+      "name": "SM_FC01_Building_TransitFacade_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Building_TransitFacade_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Building_TransitFacade_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Building_TransitFacade_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 31
+    },
+    {
+      "name": "SM_FC01_Infrastructure_ViaductSpan_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Infrastructure_ViaductSpan_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Infrastructure_ViaductSpan_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Infrastructure_ViaductSpan_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 28
+    },
+    {
+      "name": "SM_FC01_Station_Canopy_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Station_Canopy_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Station_Canopy_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Station_Canopy_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 11
+    },
+    {
+      "name": "SM_FC01_Civil_Seawall_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Civil_Seawall_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Civil_Seawall_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Civil_Seawall_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 15
+    },
+    {
+      "name": "SM_FC01_Civil_Stairs_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Civil_Stairs_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Civil_Stairs_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Civil_Stairs_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 14
+    },
+    {
+      "name": "SM_FC01_Infrastructure_Skybridge_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Infrastructure_Skybridge_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Infrastructure_Skybridge_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Infrastructure_Skybridge_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 17
+    },
+    {
+      "name": "SM_FC01_Prop_TideBeacon_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_TideBeacon_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_TideBeacon_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_TideBeacon_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 7
+    },
+    {
+      "name": "SM_FC01_Prop_DrainPipe_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_DrainPipe_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_DrainPipe_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_DrainPipe_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 4
+    },
+    {
+      "name": "SM_FC01_Prop_DebrisCluster_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_DebrisCluster_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_DebrisCluster_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_DebrisCluster_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 16
+    },
+    {
+      "name": "SM_FC01_Building_RooftopShelter_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Building_RooftopShelter_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Building_RooftopShelter_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Building_RooftopShelter_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 14
+    },
+    {
+      "name": "SM_FC01_Water_TurbidPlane_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Water_TurbidPlane_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Water_TurbidPlane_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Water_TurbidPlane_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 10
+    },
+    {
+      "name": "SM_FC01_Prop_Railing_Damaged_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_Railing_Damaged_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_Railing_Damaged_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_Railing_Damaged_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 8
+    },
+    {
+      "name": "SM_FC01_Prop_MooringBollard_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_MooringBollard_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_MooringBollard_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_MooringBollard_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 3
+    },
+    {
+      "name": "SM_FC01_Prop_SeawallLadder_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_SeawallLadder_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_SeawallLadder_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_SeawallLadder_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 11
+    },
+    {
+      "name": "SM_FC01_Building_Storefront_Broken_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Building_Storefront_Broken_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Building_Storefront_Broken_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Building_Storefront_Broken_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 10
+    },
+    {
+      "name": "SM_FC01_Prop_UtilityCabinet_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_UtilityCabinet_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_UtilityCabinet_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_UtilityCabinet_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 7
+    },
+    {
+      "name": "SM_FC01_Prop_WayfindingFrame_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_WayfindingFrame_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_WayfindingFrame_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_WayfindingFrame_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 4
+    },
+    {
+      "name": "SM_FC01_Prop_HVAC_Rooftop_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_HVAC_Rooftop_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_HVAC_Rooftop_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_HVAC_Rooftop_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 7
+    },
+    {
+      "name": "SM_FC01_Prop_FloatingDebris_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Prop_FloatingDebris_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Prop_FloatingDebris_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Prop_FloatingDebris_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 9
+    },
+    {
+      "name": "SM_FC01_Vegetation_ReedCards_A",
+      "blend": "Resource/DrownedCity/Assets/SM_FC01_Vegetation_ReedCards_A.blend",
+      "fbx": "Resource/DrownedCity/Exports/SM_FC01_Vegetation_ReedCards_A.fbx",
+      "glb": "Resource/DrownedCity/Exports/SM_FC01_Vegetation_ReedCards_A.glb",
+      "unit": "meter",
+      "origin": "ground_center",
+      "waterline_m": 0.7,
+      "mesh_parts": 19
+    }
+  ]
+}

@@ -74,7 +74,7 @@
   <PropertyGroup>
     <!-- Keep compiler/linker tracking files away from the stale VS build node
          that was locking x64\Debug\trnsei.tlog. -->
-    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)_obj_v2\</IntDir>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)_obj_v3\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

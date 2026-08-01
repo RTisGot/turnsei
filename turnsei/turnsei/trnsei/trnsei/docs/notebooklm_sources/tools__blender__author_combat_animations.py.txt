@@ -1,0 +1,185 @@
+"""プレイヤーリグへ編集可能な戦闘アクションと実行用クリップを作成する。
+
+Blenderのバージョン差で挙動が変わるFBX Action Slot変換には依存しない。
+同じ姿勢データから、手作業用.blendとフレーム固定のJSONを同時生成する。
+"""
+
+import bpy
+import json
+import math
+import os
+from mathutils import Euler, Quaternion, Vector
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SOURCE = os.path.join(ROOT, "Resource", "Character.blend")
+WALK_JSON = os.path.join(ROOT, "Resource", "Character_Walk.json")
+AUTHORING_BLEND = os.path.join(ROOT, "Resource", "Character_CombatAnimation.blend")
+IDLE_JSON = os.path.join(ROOT, "Resource", "Character_CombatIdle.json")
+ATTACK_JSON = os.path.join(ROOT, "Resource", "Character_Attack.json")
+FPS = 30.0
+
+bpy.ops.wm.open_mainfile(filepath=SOURCE)
+if bpy.context.object and bpy.context.object.mode != "OBJECT":
+    bpy.ops.object.mode_set(mode="OBJECT")
+armature = next(obj for obj in bpy.context.scene.objects if obj.type == "ARMATURE")
+if armature.animation_data is None:
+    armature.animation_data_create()
+
+with open(WALK_JSON, "r", encoding="utf-8") as stream:
+    walk = json.load(stream)
+
+# 歩行クリップの先頭姿勢を自然な立ち姿の基準として再利用する。
+# 元リグのレスト姿勢はTポーズなので、そのまま待機の基準には使用しない。
+bone_names = [bone.name for bone in armature.pose.bones]
+base = {}
+for name in bone_names:
+    source = walk["channels"].get(name)
+    base[name] = {
+        "position": Vector(source["position"][0] if source else (0.0, 0.0, 0.0)),
+        "rotation": Quaternion(source["rotation"][0] if source else (1.0, 0.0, 0.0, 0.0)),
+        "scale": Vector(source["scale"][0] if source else (1.0, 1.0, 1.0)),
+    }
+
+def delta_quaternion(degrees):
+    return Euler(tuple(math.radians(value) for value in degrees), "XYZ").to_quaternion()
+
+def compose(name, rotation=(0.0, 0.0, 0.0), position=(0.0, 0.0, 0.0)):
+    return {
+        "position": base[name]["position"] + Vector(position),
+        "rotation": base[name]["rotation"] @ delta_quaternion(rotation),
+        "scale": base[name]["scale"].copy(),
+    }
+
+def smooth(value):
+    value = max(0.0, min(1.0, value))
+    return value * value * (3.0 - 2.0 * value)
+
+def make_idle():
+    """骨盤主導の呼吸と左右の荷重移動を持つ、継ぎ目のない待機ループを作る。"""
+    frames = 91
+    result = {name: {"position": [], "rotation": [], "scale": []}
+              for name in bone_names}
+    for frame in range(frames):
+        # 先頭と末尾で同じ位相になる正弦波を使い、ループ境界の跳ねを防ぐ。
+        phase = frame / (frames - 1) * math.tau
+        breath = math.sin(phase)
+        weight = math.sin(phase * 0.5) * math.sin(phase * 0.5)
+        # 骨盤の動きに対して胸郭、肩、腕を少し逆方向へ動かし、
+        # 全身が一枚板のように揺れる見え方を避ける。
+        overlays = {
+            "Hips": ((0.7 * breath, 0.0, -1.2 * weight),
+                     (0.012 * weight, 0.0, 0.0)),
+            "spine1": ((-0.7 * breath, 0.6 * weight, 0.8 * weight), (0, 0, 0)),
+            "spine2": ((-1.0 * breath, -0.8 * weight, -0.5 * weight), (0, 0, 0)),
+            "spine3": ((0.8 * breath, 0.5 * weight, 0.4 * weight), (0, 0, 0)),
+            "neck": ((-0.35 * breath, -0.35 * weight, 0.0), (0, 0, 0)),
+            "shoulder.L": ((0.0, 0.0, -1.0 * breath), (0, 0, 0)),
+            "shoulder.R": ((0.0, 0.0, 1.0 * breath), (0, 0, 0)),
+            "uperarm.L": ((1.1 * breath, 0.0, -1.4 * weight), (0, 0, 0)),
+            "uperarm.R": ((-1.1 * breath, 0.0, 1.4 * weight), (0, 0, 0)),
+            "lowerarm.L": ((0.0, 0.8 * breath, 0.0), (0, 0, 0)),
+            "lowerarm.R": ((0.0, -0.8 * breath, 0.0), (0, 0, 0)),
+        }
+        for name in bone_names:
+            rotation, position = overlays.get(name, ((0, 0, 0), (0, 0, 0)))
+            value = compose(name, rotation, position)
+            result[name]["position"].append(list(value["position"]))
+            result[name]["rotation"].append(list(value["rotation"]))
+            result[name]["scale"].append(list(value["scale"]))
+    return {"name": "Combat_Idle", "fps": FPS, "frames": frames, "channels": result}
+
+ATTACK_KEYS = [
+    # 各タプルは (フレーム, {ボーン: (回転差分, 位置差分)})。
+    # 0F待機、5～8F予備動作、11Fヒット、14F最大伸展、
+    # 23F回収開始、42F待機復帰というタイミングで構成する。
+    (0,  {}),
+    (5,  {"Hips": ((0, -10, -4), (0, 0, 0)), "spine1": ((-5, -11, 3), (0, 0, 0)),
+          "spine2": ((-5, -13, 4), (0, 0, 0)), "uperarm.R": ((-18, -22, 28), (0, 0, 0)),
+          "lowerarm.R": ((-12, 18, -10), (0, 0, 0)), "uperarm.L": ((8, 8, -12), (0, 0, 0)),
+          "lowerarm.L": ((-8, -10, 6), (0, 0, 0)), "uperleg.R": ((3, -3, 0), (0, 0, 0))}),
+    (8,  {"Hips": ((-3, -18, -7), (0.0, -0.01, 0.02)), "spine1": ((-8, -19, 5), (0, 0, 0)),
+          "spine2": ((-7, -22, 7), (0, 0, 0)), "spine3": ((3, -8, 2), (0, 0, 0)),
+          "uperarm.R": ((-28, -42, 42), (0, 0, 0)), "lowerarm.R": ((-25, 32, -18), (0, 0, 0)),
+          "hand.R": ((0, 18, -12), (0, 0, 0)), "uperarm.L": ((12, 14, -18), (0, 0, 0))}),
+    (11, {"Hips": ((2, 24, 8), (0.0, 0.0, -0.16)), "spine1": ((7, 25, -7), (0, 0, 0)),
+          "spine2": ((8, 32, -10), (0, 0, 0)), "spine3": ((-3, 18, -5), (0, 0, 0)),
+          "uperarm.R": ((18, 58, -42), (0, 0, 0)), "lowerarm.R": ((8, -16, 18), (0, 0, 0)),
+          "hand.R": ((0, -24, 16), (0, 0, 0)), "uperarm.L": ((-12, -20, 22), (0, 0, 0)),
+          "uperleg.L": ((-5, 5, 0), (0, 0, 0)), "lowerleg.L": ((8, 0, 0), (0, 0, 0))}),
+    (14, {"Hips": ((3, 29, 10), (0.0, 0.0, -0.18)), "spine1": ((8, 28, -8), (0, 0, 0)),
+          "spine2": ((9, 35, -11), (0, 0, 0)), "uperarm.R": ((22, 66, -48), (0, 0, 0)),
+          "lowerarm.R": ((10, -20, 22), (0, 0, 0)), "uperarm.L": ((-15, -24, 26), (0, 0, 0))}),
+    (23, {"Hips": ((-1, 12, 4), (0.0, 0.0, -0.08)), "spine1": ((3, 14, -3), (0, 0, 0)),
+          "spine2": ((4, 18, -5), (0, 0, 0)), "uperarm.R": ((8, 30, -18), (0, 0, 0)),
+          "lowerarm.R": ((4, -9, 10), (0, 0, 0)), "uperarm.L": ((-5, -10, 12), (0, 0, 0))}),
+    (42, {}),
+]
+
+def make_attack():
+    """予備動作、ヒット、フォロースルー、復帰のキーポーズ間を補間する。"""
+    frames = ATTACK_KEYS[-1][0] + 1
+    result = {name: {"position": [], "rotation": [], "scale": []}
+              for name in bone_names}
+    for frame in range(frames):
+        # 現在フレームを挟む2つのキーポーズを探し、SmoothStepで補間する。
+        # 等速補間よりも開始と停止が滑らかになり、関節の急停止を抑えられる。
+        right = next(i for i, key in enumerate(ATTACK_KEYS) if key[0] >= frame)
+        left = max(0, right - 1)
+        fa, pose_a = ATTACK_KEYS[left]
+        fb, pose_b = ATTACK_KEYS[right]
+        blend = 0.0 if fb == fa else smooth((frame - fa) / (fb - fa))
+        for name in bone_names:
+            ra, pa = pose_a.get(name, ((0, 0, 0), (0, 0, 0)))
+            rb, pb = pose_b.get(name, ((0, 0, 0), (0, 0, 0)))
+            qa = delta_quaternion(ra)
+            qb = delta_quaternion(rb)
+            delta = qa.slerp(qb, blend)
+            pos = Vector(pa).lerp(Vector(pb), blend)
+            value = {
+                "position": base[name]["position"] + pos,
+                "rotation": base[name]["rotation"] @ delta,
+                "scale": base[name]["scale"],
+            }
+            result[name]["position"].append(list(value["position"]))
+            result[name]["rotation"].append(list(value["rotation"]))
+            result[name]["scale"].append(list(value["scale"]))
+    return {"name": "Basic_Attack", "fps": FPS, "frames": frames, "channels": result,
+            "events": {"anticipation": 5, "hit": 11, "recovery": 23}}
+
+def write_json(path, data):
+    with open(path, "w", encoding="utf-8") as stream:
+        json.dump(data, stream, ensure_ascii=False)
+
+def create_action(data):
+    """実行用のサンプル列をBlender Actionへ複製し、手作業で調整可能にする。"""
+    action = bpy.data.actions.new(data["name"])
+    armature.animation_data.action = action
+    for frame in range(data["frames"]):
+        # 全ボーンを各フレームへキー登録する。データ量は増えるが、
+        # Blenderとゲームで補間結果が変わらないことを優先する。
+        for name, channel in data["channels"].items():
+            bone = armature.pose.bones.get(name)
+            if bone is None:
+                continue
+            bone.rotation_mode = "QUATERNION"
+            bone.location = channel["position"][frame]
+            bone.rotation_quaternion = channel["rotation"][frame]
+            bone.scale = channel["scale"][frame]
+            bone.keyframe_insert("location", frame=frame, group=name)
+            bone.keyframe_insert("rotation_quaternion", frame=frame, group=name)
+            bone.keyframe_insert("scale", frame=frame, group=name)
+    return action
+
+idle = make_idle()
+attack = make_attack()
+write_json(IDLE_JSON, idle)
+write_json(ATTACK_JSON, attack)
+create_action(idle)
+create_action(attack)
+bpy.context.scene.frame_start = 0
+bpy.context.scene.frame_end = attack["frames"] - 1
+bpy.context.scene.render.fps = int(FPS)
+bpy.context.scene.frame_set(0)
+bpy.ops.wm.save_as_mainfile(filepath=AUTHORING_BLEND)
+print("Authored:", AUTHORING_BLEND)
+print("Idle frames:", idle["frames"], "Attack frames:", attack["frames"])

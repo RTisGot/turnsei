@@ -93,7 +93,7 @@ static void LoadJapaneseFont(ImGuiIO& io)
         std::ifstream test(path, std::ios::binary);
         if (!test.good()) continue;
         test.close();
-        if (ImFont* f = io.Fonts->AddFontFromFileTTF(path, 36.0f, &cfg, io.Fonts->GetGlyphRangesJapanese()))
+        if (ImFont* f = io.Fonts->AddFontFromFileTTF(path, 20.0f, &cfg, io.Fonts->GetGlyphRangesJapanese()))
         {
             io.FontDefault = f;
             return;
@@ -120,7 +120,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(SCR_Width, SCR_Height, u8"turnsei - 行動順", NULL, NULL);
+    window = glfwCreateWindow(SCR_Width, SCR_Height, u8"TIDEGLASS - 潮鏡都市", NULL, NULL);
     if (!window) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
